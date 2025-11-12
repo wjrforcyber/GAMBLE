@@ -24,3 +24,6 @@ add_test(NAME perSectionMatrixBest COMMAND perSectionBest)
 
 add_executable(specialLocation specialLocation.cpp ../source/util.cpp)
 add_test(NAME specialMatrixLocation COMMAND specialLocation)
+
+add_executable(arbStartPoint arbStartPoint.cpp ../source/util.cpp)
+add_test(NAME arbStartMatrixPoint COMMAND arbStartPoint)
