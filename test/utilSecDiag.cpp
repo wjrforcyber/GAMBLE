@@ -1,0 +1,23 @@
+#include "util.hpp"
+#include <cassert>
+#include <utility>
+
+int main() {
+    int squareN;
+    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), make_pair(4, 4), squareN);
+    assert(squareN == 5);
+    // Expected secondary diagonal indices for a 5x5 matrix
+    std::vector<std::pair<int, int>> expected = {
+        {0, 4},
+        {1, 3}, 
+        {2, 2}, 
+        {3, 1}, 
+        {4, 0}
+    };
+    assert(indices.size() == expected.size());
+    for (size_t i = 0; i < expected.size(); i++) {
+        assert(indices[i] == expected[i]);
+    }
+    
+    return 0;
+}

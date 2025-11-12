@@ -1,0 +1,10 @@
+CompileFlags:
+  Add: 
+    - "-x"
+    - "cuda"
+    - "--cuda-path=/usr/local/cuda-11.6"  # Adjust path to your CUDA installation
+    - "--cuda-gpu-arch=sm_52"        # Adjust to your GPU architecture
+  Remove: 
+    - "--extended-lambda"
+    - "-forward-unknown-to-host-compiler"
+    - "--generate-code=arch=compute_52,code=[compute_52,sm_52]"
