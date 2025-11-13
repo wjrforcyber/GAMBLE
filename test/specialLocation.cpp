@@ -48,6 +48,10 @@ int evaluate(const vector<pair<int, int>> &res, vector<vector<int>> cost, const 
 
 int main() {
     int squareN;
+    // The indices must has real source and sink as para
+    pair<int,int> source = {0,0};
+    pair<int,int> sink = {1,3};
+    squareN = abs(source.first - sink.first) + 1 > abs(source.second - sink.second) + 1 ? abs(source.first - sink.first) + 1 : abs(source.second - sink.second) + 1;
     auto indices = getSecDiagMatrixIndices(make_pair(0, 0), make_pair(1,3), squareN);
 
     // Create source matrix
@@ -111,12 +115,12 @@ int main() {
     std::cout << "The final cost is " << info.cost << ". " << std::endl;
     std::cout << "The final path is " << std::endl;
      //show the path
-     cout << "Path: ";
-     for (auto [r, c] : info.path) {
-         cout << "(" << r << "," << c << ") ";
-     }
-     std::cout << std::endl;
-     std::cout << std::endl;
+    cout << "Path: ";
+    for (auto [r, c] : info.path) {
+        cout << "(" << r << "," << c << ") ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
     
     return 0;
 }

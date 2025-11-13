@@ -4,8 +4,7 @@
 /*!
   \brief Create second diag position.
 */
-vector<pair<int, int>> getSecDiagMatrixIndices(pair<int, int> LU, pair<int,int> RD, int& squareN) {
-    squareN = (RD.first - LU.first + 1) > (RD.second - LU.second + 1) ? (RD.first - LU.first + 1) : (RD.second - LU.second + 1);
+vector<pair<int, int>> getSecDiagMatrixIndices(pair<int, int> LU, pair<int,int> RD, const int& squareN) {
     vector<pair<int, int>> indices;
     for (int r = 0; r < squareN; r++) {
         int c = squareN - 1 - r;

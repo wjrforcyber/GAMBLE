@@ -10,7 +10,9 @@ int main() {
     auto RD = make_pair(4,4);
         //cout << "Selected suqare N is " << squareN << endl;
     
-    int squareN = 0;
+    int squareN;
+    // The indices must has real source and sink as para
+    squareN = abs(LU.first - RD.first) + 1 > abs(LU.second - RD.second) + 1 ? abs(LU.first - RD.first) + 1 : abs(LU.second - RD.second) + 1;
     auto indices = getSecDiagMatrixIndices(LU, RD, squareN);
     //show the indices
     for (auto [l, r] : indices) {

@@ -47,9 +47,11 @@ int evaluate(const vector<pair<int, int>> &res, vector<vector<int>> cost, const 
 }
 
 int main() {
-    //const int MATRIX_ROWS = 5;
-    //const int MATRIX_COLS = 5;
     int squareN;
+    // The indices must has real source and sink as para
+    pair<int,int> source = {0,0};
+    pair<int,int> sink = {4,4};
+    squareN = abs(source.first - sink.first) + 1 > abs(source.second - sink.second) + 1 ? abs(source.first - sink.first) + 1 : abs(source.second - sink.second) + 1;
     auto indices = getSecDiagMatrixIndices(make_pair(0, 0), make_pair(4,4), squareN);
 
     // Create source matrix
