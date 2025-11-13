@@ -10,6 +10,13 @@ using namespace std;
 struct PathInfo {
     int cost;
     vector<pair<int, int>> path;
+    void reverseInplace(int nSquare)
+    {
+        for(int i = 0 ; i < path.size(); i++)
+        {
+            path[i].second =  (nSquare - 1) - path[i].second;
+        }
+    }
 };
 
 struct MatrixSection {
@@ -123,12 +130,13 @@ struct MatrixSection {
 class MatrixSectionProcessorCPU {
 public:
     MatrixSectionProcessorCPU(vector<vector<int>>& originalMatrix, vector<MatrixSection>& sections) 
-        : sections(sections), numSections(sections.size() ), originalMatrix(originalMatrix) {
+        : sections(sections), numSections(sections.size()), originalMatrix(originalMatrix) {
         // Initialize section dimensions
         for (int i = 0; i < numSections; i++) {
             sections[i].rows = sections[i].bottom - sections[i].top + 1;
             sections[i].cols = sections[i].right - sections[i].left + 1;
             // put the data into section.data
+            cout << "Row num " << sections[i].rows << " Col num " << sections[i].cols << endl;
             sections[i].data.resize(sections[i].rows, vector<int>(sections[i].cols));
             for (int r = 0; r < sections[i].rows; r++) {
                 for (int c = 0; c < sections[i].cols; c++) {
