@@ -108,9 +108,9 @@ int main() {
     pair<int, int> rSource = make_pair(0, 0);
     pair<int, int> rSink = make_pair(1, 3);
     processor.getMinCostAndPathOnSections(originalMatrix, rSource, rSink );
-    
+    vector<pair<int, int>> uncPins = {};
     // Calculate each pair of the path and find the optimum one
-    PathInfo info = selectFromMinCostAndPath(sections, originalMatrix, rSource, rSink);
+    PathInfo info = selectFromMinCostAndPath(sections, originalMatrix, rSource, rSink, uncPins);
     // Print the final cost and the path selected
     std::cout << "The final cost is " << info.cost << ". " << std::endl;
     std::cout << "The final path is " << std::endl;

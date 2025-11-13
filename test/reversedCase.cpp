@@ -70,7 +70,8 @@ int main() {
     
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
     processor.getMinCostAndPathOnSections(originalMatrix, sourceR, sinkR );
-    PathInfo info = selectFromMinCostAndPath(sections, originalMatrix, sourceR, sinkR);
+    vector<pair<int, int>> uncPins = {};
+    PathInfo info = selectFromMinCostAndPath(sections, originalMatrix, sourceR, sinkR, uncPins);
     assert(info.path[0] == sourceR && info.path[info.path.size() - 1] == sinkR);
     //Reverse the path, use squareN - i do the reverse
     info.reverseInplace(squareN);

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 #include <vector>
 #include "mazeRouter.hpp"
 
@@ -15,6 +16,76 @@ struct PathInfo {
         for(int i = 0 ; i < path.size(); i++)
         {
             path[i].second =  (nSquare - 1) - path[i].second;
+        }
+    }
+    void costUncPin(std::vector<std::vector<int>>& originalMatrix, vector<pair<int, int>>& path, const pair<int, int>& pin)
+    {
+        vector<int> cost4Direction = {0,0,0,0};
+        vector<pair<int, int>> extenUncDir = {pin, pin, pin, pin};
+        //auto tmpPin = pin;
+        static const int dx[] = {-1, 1, 0, 0};
+        static const int dy[] = {0, 0, -1, 1};
+
+        int iDir = 0;
+        bool iFound = false;
+        // It should be 100% sure that you could find the path to the original path according to the predefined scene
+        //while(std::find(path.begin(), path.end(), extenUncDir[iDir]) == path.end())
+        while(true)
+        {
+            for( iDir = 0; iDir < 4; iDir++)
+            {
+                if(extenUncDir[iDir].first + dx[iDir] >=0 && extenUncDir[iDir].first + dx[iDir] <= originalMatrix.size() - 1 \
+                && extenUncDir[iDir].second + dy[iDir] >=0 && extenUncDir[iDir].second + dy[iDir] <= originalMatrix.size() - 1)
+                {
+                    extenUncDir[iDir].first += dx[iDir];
+                    extenUncDir[iDir].second += dy[iDir];
+                }
+                else {
+                    continue;
+                }
+                if (std::find(path.begin(), path.end(), extenUncDir[iDir]) != path.end()) {
+                    std::cout << "Element found!" << std::endl;
+                    iFound = true;
+                    break;
+                } else {
+                    std::cout << "Element not found." << std::endl;
+                }
+            }
+            if(iFound == true)
+            {
+                break;
+            }
+            //iDir = 0;
+        }
+        // fetch path from extenUncDir[iDir] to pin
+        pair<int, int> tmpRecord = pin;
+        int recordPreSize = path.size();
+        while(tmpRecord != extenUncDir[iDir])
+        {
+            path.push_back(tmpRecord);
+            cost += originalMatrix[tmpRecord.first][tmpRecord.second];
+            tmpRecord.first += dx[iDir];
+            tmpRecord.second += dy[iDir];
+        }
+        if(extenUncDir[iDir] != path[0] && extenUncDir[iDir] != path[recordPreSize - 1])
+        {
+            auto it = std::find(path.begin(), path.end(), extenUncDir[iDir]);
+            int index = distance(path.begin(), it);
+            //There's no via originally, now we bring ones
+            if(path[index].first - path[index - 1].first == path[index + 1].first - path[index].first && \
+            path[index].second - path[index - 1].second == path[index + 1].second - path[index].second)
+            {
+                cost += turnCost;
+            }
+            //If there's via, then at this point then we don't need to care.
+            //TODO @Jingren This need to be changed to directly encode via at the location instead of checking!!!
+        }
+    }
+    void updateUncPins(std::vector<std::vector<int>>& originalMatrix, const vector<pair<int, int>>& uncPins)
+    {
+        for(int i = 0 ;i < uncPins.size(); i++)
+        {
+            costUncPin(originalMatrix, path, uncPins[i]);
         }
     }
 };
@@ -136,7 +207,6 @@ public:
             sections[i].rows = sections[i].bottom - sections[i].top + 1;
             sections[i].cols = sections[i].right - sections[i].left + 1;
             // put the data into section.data
-            cout << "Row num " << sections[i].rows << " Col num " << sections[i].cols << endl;
             sections[i].data.resize(sections[i].rows, vector<int>(sections[i].cols));
             for (int r = 0; r < sections[i].rows; r++) {
                 for (int c = 0; c < sections[i].cols; c++) {

@@ -48,70 +48,80 @@ int evaluate(const vector<pair<int, int>> &res, vector<vector<int>> cost, const 
 
 int main() {
     int squareN;
-    // The indices must has real source and sink as para
     pair<int,int> source = {0,0};
-    pair<int,int> sink = {4,4};
+    pair<int,int> sink = {1,3};
     squareN = abs(source.first - sink.first) + 1 > abs(source.second - sink.second) + 1 ? abs(source.first - sink.first) + 1 : abs(source.second - sink.second) + 1;
-    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), make_pair(4,4), squareN);
+    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), make_pair(1,3), squareN);
 
     // Create source matrix
-    std::vector<int> h_matrix(squareN * squareN);
-    for (int i = 0; i < squareN * squareN; i++) {
+    std::vector<int> h_matrix(N * N);
+    for (int i = 0; i < N * N; i++) {
         h_matrix[i] = static_cast<int>(rand()) % 10;
     }
 
     //print out the original matrix
-    std::cout << "Original Matrix:" << std::endl;
-    for (int i = 0; i < squareN; i++) {
-        for (int j = 0; j < squareN; j++) {
-            std::cout << h_matrix[i * squareN + j] << " ";
+    std::cout << "Very Original Matrix:" << std::endl;
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            std::cout << h_matrix[i * N + j] << " ";
         }
         std::cout << std::endl;
     }
     std::vector<MatrixSection> sections;
-    createSectionsOnSecDiag(indices, sections,make_pair(0, 0), make_pair(4, 4));
+    // TODO@ Jingren Wang: (Bottom, Right) should be the flipped (Bottom, Right)
+    createSectionsOnSecDiag(indices, sections,make_pair(0, 0), make_pair(squareN - 1, squareN - 1));
     
-    assert(sections.size() == 10); // For a 10x10 matrix, there should be 10 sections
+    assert(sections.size() == 8); // For a 10x10 matrix, there should be 10 sections
     
     // Convert flat matrix to 2D vector
     std::vector<std::vector<int>> originalMatrix(squareN, std::vector<int>(squareN));
     for (int i = 0; i < squareN; i++) {
         for (int j = 0; j <squareN; j++) {
-            originalMatrix[i][j] = h_matrix[i * squareN + j];
+            originalMatrix[i][j] = h_matrix[i * N + j];
         }
     }
+    
+    cout << "Converted cost matrix "<< endl;
+    for (int i = 0; i < squareN; i++) {
+        for (int j = 0; j < squareN; j++) {
+            std::cout << originalMatrix[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    
     vector<pair<int, int>> cpures;
-    vector<pair<int, int>> pins = {make_pair(0, 0), make_pair(4, 4)};
+    vector<pair<int, int>> pins = {make_pair(0, 0), make_pair(1, 3), make_pair(3, 2)};
     MazeRouter mazeRouter;
-    auto cputime = mazeRouter.route(originalMatrix, 5, pins, cpures);
+    auto cputime = mazeRouter.route(originalMatrix, 4, pins, cpures);
     //show the path
     cout << "Original maze route Path: ";
     for (auto [r, c] : cpures) {
         cout << "(" << r << "," << c << ") ";
     }
     std::cout << std::endl;
-    std::cout << "Cost is " << evaluate(cpures, originalMatrix, 5);
+    std::cout << "Cost is " << evaluate(cpures, originalMatrix, 4);
     std::cout << std::endl;
     
-    // Process sections on CPU
+    //// Process sections on CPU
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
     pair<int, int> rSource = make_pair(0, 0);
-    pair<int, int> rSink = make_pair(4, 4);
-    processor.getMinCostAndPathOnSections(originalMatrix, rSource, rSink);
+    pair<int, int> rSink = make_pair(1, 3);
+    processor.getMinCostAndPathOnSections(originalMatrix, rSource, rSink );
     
+    //// Evaluate unconnected pins from 4 direction
+    vector<pair<int, int>> uncPins = {{3,2}};
     // Calculate each pair of the path and find the optimum one
-    vector<pair<int, int>> uncPins = {};
     PathInfo info = selectFromMinCostAndPath(sections, originalMatrix, rSource, rSink, uncPins);
     // Print the final cost and the path selected
     std::cout << "The final cost is " << info.cost << ". " << std::endl;
     std::cout << "The final path is " << std::endl;
      //show the path
-     cout << "Path: ";
-     for (auto [r, c] : info.path) {
-         cout << "(" << r << "," << c << ") ";
-     }
-     std::cout << std::endl;
-     std::cout << std::endl;
+    cout << "Path: ";
+    for (auto [r, c] : info.path) {
+        cout << "(" << r << "," << c << ") ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
     
     return 0;
 }
