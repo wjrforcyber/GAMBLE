@@ -30,3 +30,6 @@ add_test(NAME reversedMatrixCase COMMAND reversedCase)
 
 add_executable(fitUnconnected fitUnconnected.cpp ../source/util.cpp)
 add_test(NAME fitMatrixUnconnected COMMAND fitUnconnected)
+
+add_executable(sameRowCol sameRowCol.cpp ../source/util.cpp)
+add_test(NAME sameMatrixRowCol COMMAND sameRowCol)
