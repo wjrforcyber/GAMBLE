@@ -68,6 +68,10 @@ PathInfo selectFromMinCostAndPath(vector<MatrixSection>& sections, std::vector<s
     for(int i = 0; i < nSizePairDiag; i++)
     {
         costFinal[i].cost = sections[i].minCost + sections[i + nSizePairDiag].minCost - originalMatrix[sections[i + nSizePairDiag].bPath[0].first][sections[i + nSizePairDiag].bPath[0].second] + ( directionSame(sections[i].bPath, sections[i + nSizePairDiag].bPath) ? 0 : 50);
+        if(directionSame(sections[i].bPath, sections[i + nSizePairDiag].bPath) == false)
+        {
+            sections[i].isLocVia[sections[i].bPath[sections[i].bPath.size() - 1]] = true;
+        }
         // TODO @Jingren: Source in LU and Sink in RL, or set to INF. Corner case, also give a tie breaker.
         if(!sections[i].hasLoc(rSource) || !sections[i + nSizePairDiag].hasLoc(rSink))
         {
@@ -90,7 +94,8 @@ PathInfo selectFromMinCostAndPath(vector<MatrixSection>& sections, std::vector<s
             continue;
         }
         //Update vias check inside the update
-        
+        costFinal[i].isLocVia.insert(sections[i].isLocVia.begin(), sections[i].isLocVia.end());
+        costFinal[i].isLocVia.insert(sections[i + nSizePairDiag].isLocVia.begin(), sections[i + nSizePairDiag].isLocVia.end());
         costFinal[i].updateUncPins(originalMatrix, uncPins);
         cout << "Updated cost is " << costFinal[i].cost << endl;
         cout << "Updated path is " << endl;

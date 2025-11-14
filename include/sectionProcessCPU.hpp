@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -11,6 +12,37 @@ using namespace std;
 struct PathInfo {
     int cost;
     vector<pair<int, int>> path;
+    map<pair<int,int>, bool> isLocVia;
+    // check if a location is via
+    bool isVia(pair<int, int> loc)
+    {
+        if(isLocVia.size() == 0)
+        {
+            cout << "Error: Location of the via is not properly decided." << endl;
+            return false;
+        }
+        if(isLocVia.count(loc) == 0)
+        {
+            cout << "Error: Position does not exit." << endl;
+            return false;
+        }
+        return isLocVia[loc];
+    }
+    
+    // number of vias on path
+    int numVias()
+    {
+        int count = 0;
+        for(auto &item : isLocVia)
+        {
+            if(isVia(item.first))
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
     void reverseInplace(int nSquare)
     {
         for(int i = 0 ; i < path.size(); i++)
@@ -55,7 +87,6 @@ struct PathInfo {
             {
                 break;
             }
-            //iDir = 0;
         }
         // fetch path from extenUncDir[iDir] to pin
         pair<int, int> tmpRecord = pin;
@@ -67,18 +98,39 @@ struct PathInfo {
             tmpRecord.first += dx[iDir];
             tmpRecord.second += dy[iDir];
         }
+        // if the attached point is not the source and sink point, we could directly check
         if(extenUncDir[iDir] != path[0] && extenUncDir[iDir] != path[recordPreSize - 1])
         {
             auto it = std::find(path.begin(), path.end(), extenUncDir[iDir]);
             int index = distance(path.begin(), it);
             //There's no via originally, now we bring ones
-            if(path[index].first - path[index - 1].first == path[index + 1].first - path[index].first && \
-            path[index].second - path[index - 1].second == path[index + 1].second - path[index].second)
+            if(isVia(path[index]) == false)
             {
+                // It's now a via, update
+                isLocVia[path[index]] = true;
                 cost += turnCost;
             }
-            //If there's via, then at this point then we don't need to care.
-            //TODO @Jingren This need to be changed to directly encode via at the location instead of checking!!!
+        }
+        // if the attached point is at the beginning or the end check the ini dir with iDir, or end dir with iDir
+        if(extenUncDir[iDir] == path[0])
+        {
+            auto tmpDir = make_pair(dx[iDir], dy[iDir]);
+            if(tmpDir != make_pair(path[1].first - path[0].first, path[1].second - path[0].second))
+            {
+                assert(isLocVia[path[0]] == false);
+                isLocVia[path[0]] = true;
+                cost += turnCost;
+            }
+        }
+        if(extenUncDir[iDir] == path[recordPreSize - 1])
+        {
+            auto tmpDir = make_pair(dx[iDir], dy[iDir]);
+            if(tmpDir != make_pair(path[recordPreSize - 1].first - path[recordPreSize - 2].first, path[recordPreSize - 1].second - path[recordPreSize - 2].second))
+            {
+                assert(isLocVia[path[recordPreSize - 1]] == false);
+                isLocVia[path[recordPreSize - 1]] = true;
+                cost += turnCost;
+            }
         }
     }
     void updateUncPins(std::vector<std::vector<int>>& originalMatrix, const vector<pair<int, int>>& uncPins)
@@ -97,6 +149,7 @@ struct MatrixSection {
     int rows, cols;     // Section dimensions
     int minCost;        // Mincost meet at the diag position
     vector<pair<int, int>> bPath; // Record all the path from (top, left) to (bottom, right)
+    map<pair<int, int>, bool>  isLocVia;
     /*
     Check if the location is in the current path
     */
@@ -142,6 +195,8 @@ struct MatrixSection {
         vector<pair<int, int>> dirs = {{-1,0}, {1,0}, {0,-1}, {0,1}};
         
         PathInfo result;
+        result.path.clear();
+        result.isLocVia.clear();
         result.cost = INF;
         
         while (!pq.empty()) {
@@ -186,6 +241,26 @@ struct MatrixSection {
             result.path[i].first += top;
             result.path[i].second += left;
         }
+        for(auto i = 0 ; i < result.path.size(); i++)
+        {
+            // check the final path decision, if it is a via point
+            if(i == 0 || i == result.path.size() - 1)
+            {
+                result.isLocVia[result.path[i]] = false;
+            }
+            if(i != 0 && i != result.path.size() - 1)
+            {
+                if((result.path[i].first - result.path[i - 1].first == result.path[i+1].first - result.path[i].first) && \
+                   (result.path[i].second - result.path[i - 1].second == result.path[i+1].second - result.path[i].second) )
+                {
+                    result.isLocVia[result.path[i]] = false;
+                }
+                else {
+                    result.isLocVia[result.path[i]] = true;
+                }
+            }
+        }
+        assert(result.isLocVia.size() == result.path.size());
         return result;
     }
     
@@ -227,7 +302,7 @@ public:
                 cout << endl;
             }
             //also show the shortest path sum with turn cost
-            auto [minCost, path] = sections[i].shortestPathSumWithTurnCost();
+            auto [minCost, path, isLocVia] = sections[i].shortestPathSumWithTurnCost();
             cout << "Original Path Sum with Turn Cost: " << minCost << endl;
             //show the path
             cout << "Path: ";
@@ -235,8 +310,7 @@ public:
                 cout << "(" << r << "," << c << ") ";
             }
             cout << endl;
-            // TODO: @Jingren Wang: get the real value from diag to source and from diag to sink
-            auto [minCostUpdate, pathUpdate] = realValCheck(originalMatrix, realSource, realSink, path);
+            auto [minCostUpdate, pathUpdate, isLocViaUpdate] = realValCheck(originalMatrix, realSource, realSink, path, isLocVia);
 
             cout << "Shortest Path Sum with Turn Cost: " << minCostUpdate << endl;
             //show the path
@@ -247,6 +321,7 @@ public:
             // pass the minCost and path to section[i]
             sections[i].minCost = minCostUpdate;
             sections[i].bPath = pathUpdate;
+            sections[i].isLocVia = isLocViaUpdate;
             cout << endl;
             cout << endl;
         }
@@ -284,44 +359,18 @@ protected:
     /*
     Update the real value of the cost and path
     */
-    PathInfo realValCheck(std::vector<std::vector<int>>& originalMatrix, pair<int, int>& realSource, pair<int, int>& realSink, vector<pair<int, int>>&path)
+    PathInfo realValCheck(std::vector<std::vector<int>>& originalMatrix, pair<int, int>& realSource, pair<int, int>& realSink, vector<pair<int, int>>&path, map<pair<int, int>, bool> isLocVia)
     {
-        //int realUpdate = 0;
-        //vector<pair<int, int>> pathUpdate;
-        //PathInfo realUpdatePathInfo;
-        //int nSize = originalMatrix.size();
-        //int i = 0;
-        //if(path.size() > 0 && (path[path.size() - 1].first + path[path.size() - 1].second == nSize - 1))
-        //{
-        //    for(i = path.size() - 1; i > 0; i--)
-        //    {
-        //        realUpdate += originalMatrix[path[i].first][path[i].second];
-        //        if(path[i].first == realSource.first && path[i].second == realSource.second)
-        //            break;
-        //    }
-        //    pathUpdate.insert( pathUpdate.end(), path.begin() , path.end());
-        //}
-        //else if(path.size() > 0 && (path[0].first + path[0].second == nSize - 1)){
-        //    for(i = 0; i < path.size(); i++)
-        //    {
-        //        realUpdate += originalMatrix[path[i].first][path[i].second];
-        //        if(path[i].first == realSink.first && path[i].second == realSink.second)
-        //            break;
-        //    }
-        //    pathUpdate.insert( pathUpdate.end(), path.begin(), path.begin() + i);
-        //}
-        //else {
-        //    cout << "Do not encounter with the condition." << endl;
-        //}
-        //cout << "The updated cost is " << realUpdate << endl;
-        //realUpdatePathInfo.cost = realUpdate;
-        //realUpdatePathInfo.path = pathUpdate;
-        //return realUpdatePathInfo;
         int i = 0;
-        int costUpdate = 0;
         PathInfo realUpdatePathInfo;
+        // Important! Might lead to wired value.
+        realUpdatePathInfo.cost = 0;
+        realUpdatePathInfo.path.clear();
+        realUpdatePathInfo.path.clear();
         int nSize = originalMatrix.size();
-        vector<pair<int, int>> pathUpdate;
+        int &costUpdate = realUpdatePathInfo.cost;
+        map<pair<int, int>, bool> &isViaUpdate = realUpdatePathInfo.isLocVia;
+        vector<pair<int, int>> &pathUpdate = realUpdatePathInfo.path;
         if(path.size() > 0 && (path[path.size() - 1].first + path[path.size() - 1].second == nSize - 1))
         {
             for( i = path.size() - 1; i >= 0; i--)
@@ -334,6 +383,10 @@ protected:
                 costUpdate += originalMatrix[path[i].first][path[i].second];
             }
             pathUpdate.insert(pathUpdate.end(), path.begin() + i, path.end() );
+            for(auto item = path.begin() + i; item < path.end(); item++)
+            {
+                isViaUpdate[*item] = isLocVia[*item];
+            }
         }
         else if(path.size() > 0 && (path[0].first + path[0].second == nSize - 1))
         {
@@ -348,9 +401,13 @@ protected:
             }
             i = (i == path.size()) ? path.size() - 1 : i;
             pathUpdate.insert(pathUpdate.end(), path.begin(), path.begin() + i + 1 );
+            for(auto item = path.begin(); item < path.begin() + i + 1; item++)
+            {
+                isViaUpdate[*item] = isLocVia[*item];
+            }
         }
-        realUpdatePathInfo.cost = costUpdate + numTurns(pathUpdate) * turnCost;
-        realUpdatePathInfo.path = pathUpdate;
+        assert(numTurns(pathUpdate) == realUpdatePathInfo.numVias());
+        costUpdate += realUpdatePathInfo.numVias() * turnCost;
         return realUpdatePathInfo;
     }
 
