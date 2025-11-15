@@ -13,7 +13,7 @@ int main() {
     int squareN;
     // The indices must has real source and sink as para
     squareN = abs(LU.first - RD.first) + 1 > abs(LU.second - RD.second) + 1 ? abs(LU.first - RD.first) + 1 : abs(LU.second - RD.second) + 1;
-    auto indices = getSecDiagMatrixIndices(LU, RD, squareN);
+    auto indices = getSecDiagMatrixIndices(LU, squareN);
     //show the indices
     for (auto [l, r] : indices) {
         cout << "(" << l << "," << r << ") ";

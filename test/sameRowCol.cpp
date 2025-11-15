@@ -51,7 +51,7 @@ int main() {
     pair<int,int> source = {0,0};
     pair<int,int> sink = {0,3};
     squareN = abs(source.first - sink.first) + 1 > abs(source.second - sink.second) + 1 ? abs(source.first - sink.first) + 1 : abs(source.second - sink.second) + 1;
-    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), make_pair(0,3), squareN);
+    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), squareN);
 
     std::vector<MatrixSection> sections;
     // TODO@ Jingren Wang: (Bottom, Right) should be the flipped (Bottom, Right)
@@ -85,7 +85,7 @@ int main() {
     //// Evaluate unconnected pins from 4 direction
     vector<pair<int, int>> uncPins = {};
     // Calculate each pair of the path and find the optimum one
-    PathInfo info = selectFromMinCostAndPath(sections, originalMatrix, rSource, rSink, uncPins);
+    PathInfo info = processor.selectFromMinCostAndPath(sections, originalMatrix, rSource, rSink, uncPins);
     // Print the final cost and the path selected
     std::cout << "The final cost is " << info.cost << ". " << std::endl;
     std::cout << "The final path is " << std::endl;

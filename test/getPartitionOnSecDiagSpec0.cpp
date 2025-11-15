@@ -16,7 +16,7 @@ int main() {
     int squareN = 0;
     // The indices must has real source and sink as para
     squareN = abs(LU.first - RD.first) + 1 > abs(LU.second - RD.second) + 1 ? abs(LU.first - RD.first) + 1 : abs(LU.second - RD.second) + 1;
-    auto indices = getSecDiagMatrixIndices(LU, RD, squareN);
+    auto indices = getSecDiagMatrixIndices(LU, squareN);
     assert(squareN == 4);
     //show the indices
     for (auto [l, r] : indices) {

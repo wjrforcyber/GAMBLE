@@ -15,7 +15,7 @@ int main() {
     assert(squareN == 5);
 
     //This should provide exact value of the LU and RL position
-    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), make_pair(squareN - 1, squareN - 1), squareN);
+    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), squareN);
 
     //Fliped real source
     pair<int, int> sourceR = {source.first, (squareN - 1) - source.second};
@@ -71,7 +71,7 @@ int main() {
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
     processor.getMinCostAndPathOnSections(originalMatrix, sourceR, sinkR );
     vector<pair<int, int>> uncPins = {};
-    PathInfo info = selectFromMinCostAndPath(sections, originalMatrix, sourceR, sinkR, uncPins);
+    PathInfo info =processor.selectFromMinCostAndPath(sections, originalMatrix, sourceR, sinkR, uncPins);
     assert(info.path[0] == sourceR && info.path[info.path.size() - 1] == sinkR);
     //Reverse the path, use squareN - i do the reverse
     info.reverseInplace(squareN);
