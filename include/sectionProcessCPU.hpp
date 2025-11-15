@@ -1,10 +1,12 @@
 #ifndef SECTION_OPS_CPU_HPP
 #define SECTION_OPS_CPU_HPP
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <utility>
 #include <vector>
 #include "mazeRouter.hpp"
+#include "pathInfo.hpp"
 #include "util.hpp"
 
 using namespace std;
@@ -46,7 +48,7 @@ public:
                 cout << "(" << r << "," << c << ") ";
             }
             cout << endl;
-            auto [minCostUpdate, pathUpdate, isLocViaUpdate] = realValCheck(originalMatrix, realSource, realSink, path, isLocVia);
+            auto [minCostUpdate, pathUpdate, isLocViaUpdate] = realValCheck(originalMatrix, realSink, path, isLocVia);
 
             cout << "Shortest Path Sum with Turn Cost: " << minCostUpdate << endl;
             //show the path
@@ -77,6 +79,11 @@ public:
         cout << "Eval final res process " << endl; 
         for(int i = 0; i < nSizePairDiag; i++)
         {
+            if(sections[i].bPath.size() == 0 || sections[i + nSizePairDiag].bPath.size() == 0)
+            {
+                costFinal[i].cost = INF;
+                continue;
+            }
             costFinal[i].cost = sections[i].minCost + sections[i + nSizePairDiag].minCost - originalMatrix[sections[i + nSizePairDiag].bPath[0].first][sections[i + nSizePairDiag].bPath[0].second] + ( directionSame(sections[i].bPath, sections[i + nSizePairDiag].bPath) ? 0 : 50);
             if(directionSame(sections[i].bPath, sections[i + nSizePairDiag].bPath) == false)
             {
@@ -180,14 +187,14 @@ protected:
     /*
     Update the real value of the cost and path
     */
-    PathInfo realValCheck(std::vector<std::vector<int>>& originalMatrix, pair<int, int>& realSource, pair<int, int>& realSink, vector<pair<int, int>>&path, map<pair<int, int>, bool> isLocVia)
+    PathInfo realValCheck(std::vector<std::vector<int>>& originalMatrix, pair<int, int>& realSink, vector<pair<int, int>>&path, map<pair<int, int>, bool> isLocVia)
     {
         int i = 0;
         PathInfo realUpdatePathInfo;
         // Important! Might lead to wired value.
         realUpdatePathInfo.cost = 0;
         realUpdatePathInfo.path.clear();
-        realUpdatePathInfo.path.clear();
+        realUpdatePathInfo.isLocVia.clear();
         int nSize = originalMatrix.size();
         int &costUpdate = realUpdatePathInfo.cost;
         map<pair<int, int>, bool> &isViaUpdate = realUpdatePathInfo.isLocVia;
@@ -196,12 +203,19 @@ protected:
         {
             for( i = path.size() - 1; i >= 0; i--)
             {
-                if(path[i].first == realSource.first && path[i].second == realSource.second)
+                if(path[i].first == 0 && path[i].second == 0)
                 {
                     costUpdate += originalMatrix[path[i].first][path[i].second];
                     break;
                 }
                 costUpdate += originalMatrix[path[i].first][path[i].second];
+            }
+            if(i == -1)
+            {
+                realUpdatePathInfo.cost = INF;
+                realUpdatePathInfo.path.clear();
+                realUpdatePathInfo.isLocVia.clear();
+                return realUpdatePathInfo;
             }
             pathUpdate.insert(pathUpdate.end(), path.begin() + i, path.end() );
             for(auto item = path.begin() + i; item < path.end(); item++)
@@ -220,13 +234,37 @@ protected:
                 }
                 costUpdate += originalMatrix[path[i].first][path[i].second];
             }
-            i = (i == path.size()) ? path.size() - 1 : i;
+            if(i == path.size())
+            {
+                realUpdatePathInfo.cost = INF;
+                realUpdatePathInfo.path.clear();
+                realUpdatePathInfo.isLocVia.clear();
+                return realUpdatePathInfo;
+            }
+            //i = (i == path.size()) ? path.size() - 1 : i;
             pathUpdate.insert(pathUpdate.end(), path.begin(), path.begin() + i + 1 );
             for(auto item = path.begin(); item < path.begin() + i + 1; item++)
             {
                 isViaUpdate[*item] = isLocVia[*item];
+                if(item == path.begin() + i)
+                {
+                    isViaUpdate[*item] = false;
+                }
             }
         }
+        cout << "Show path update " << endl;
+        for(const auto & item: pathUpdate)
+        {
+            cout << "(" << item.first << "," << item.second << ") ";
+        }
+        cout << endl;
+        cout << "Show the isVia map " << endl;
+        for(const auto & item: isViaUpdate)
+        {
+            cout << "(" << item.first.first << "," << item.first.second << ") " << item.second << endl;
+        }
+        cout << endl;
+        assert(pathUpdate.size() == isViaUpdate.size());
         assert(numTurns(pathUpdate) == realUpdatePathInfo.numVias());
         costUpdate += realUpdatePathInfo.numVias() * turnCost;
         return realUpdatePathInfo;
@@ -248,6 +286,8 @@ class DazeRouter {
         void preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N);
         void getOriginalMatrix(const pair<int, int>& source, const vector<vector<int>> h_matrix, const int N);
         PathInfo findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins);
+        void updateRealPathMap(PathInfo& p, const pair<int, int>& rSource);
+        void cleanUpPath(vector<pair<int, int>> &res, const vector<PathInfo> &allPathInfo);
     private:
         int squareN;
         std::vector<std::vector<int>> originalMatrix;
@@ -257,43 +297,99 @@ class DazeRouter {
 inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res)
 {
     auto clocks = clock();
-    static const int dx[] = {-1, 1, 0, 0};
-    static const int dy[] = {0, 0, -1, 1};
     auto computeClocks = clock();
-    
+    assert(pins.size() >= 2);
+    vector<PathInfo> allPathInfo;
+    allPathInfo.clear();
+    for(auto i = 1; i < pins.size(); i++)
+    {
+        preProcess(pins[i-1], pins[i], cost, N);
+        //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
+        vector<pair<int, int>> uncPins = {};
+        PathInfo p = findMinCostPath(pins[i-1], pins[i], uncPins);
+        updateRealPathMap(p, pins[i-1]);
+        allPathInfo.push_back(p);
+    }
+    //Since we do not encode connected attribute on the location, so we need an extra filtering on duplicated locations.
+    cleanUpPath(res, allPathInfo);
     computeClocks = clock() - computeClocks;
     clocks = clock() - clocks;
     return make_pair(clocks, computeClocks);
-    
+}
+
+inline void DazeRouter::updateRealPathMap(PathInfo& p, const pair<int, int>& rSource)
+{
+    map<pair<int, int>, bool> tmpUpdate;
+    for(auto &item:p.isLocVia)
+    {
+        auto itemUpdate = make_pair(item.first.first + rSource.first, item.first.second + rSource.second);
+        tmpUpdate[itemUpdate] = item.second;
+    }
+    p.isLocVia.clear();
+    p.isLocVia = tmpUpdate;
+}
+
+inline void DazeRouter::cleanUpPath(vector<pair<int, int>> &res, const vector<PathInfo> &allPathInfo)
+{
+    // Before cleanup, it is necessary that all real source should be added to the map(should be path and map, we only update map for simplicity.), if missing the update step, you will encounter having such as (0,0) in all PathInfo.
+    set<pair<int, int>> tmpSaveUniqueLoc;
+    for(const auto &pInfo : allPathInfo)
+    {
+        for(const auto & [k, v] : pInfo.isLocVia)
+        {
+            tmpSaveUniqueLoc.insert(k);
+        }
+    }
+    res = vector<pair<int, int>>(tmpSaveUniqueLoc.begin(), tmpSaveUniqueLoc.end());
 }
 
 inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const vector<vector<int>> h_matrix, int N)
 {
+    originalMatrix.clear();
     std::vector<std::vector<int>> originalMatrixExtract(squareN, std::vector<int>(squareN));
     for (int i = 0; i < squareN; i++) {
         for (int j = 0; j <squareN; j++) {
-            originalMatrixExtract[i][j] = h_matrix[i + source.first][(i+source.first) * N + (j+source.second)];
+            // if exceed the boundaries, then set the cost to INF.
+            //if(i + source.first >= N || ((i+source.first) * N + (j+source.second)) >= N)
+            if(i + source.first >= N || j+source.second >= N)
+            {
+                originalMatrixExtract[i][j] = INF;
+            }
+            else {
+                //originalMatrixExtract[i][j] = h_matrix[i + source.first][(i+source.first) * N + (j+source.second)];
+                originalMatrixExtract[i][j] = h_matrix[i + source.first][j+source.second];
+            }
         }
     }
     originalMatrix = originalMatrixExtract;
+    cout << "Extracted matrix" << endl;
+    for(auto i = 0; i < squareN; i++)
+    {
+        for(auto j = 0; j < squareN; j++)
+        {
+            cout << originalMatrix[i][j]<< " ";
+        }
+        cout<< endl;
+    }
+    cout << endl;
 }
 
 inline void DazeRouter::preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N)
 {
+    sections.clear();
     squareN = abs(source.first - sink.first) + 1 > abs(source.second - sink.second) + 1 ? abs(source.first - sink.first) + 1 : abs(source.second - sink.second) + 1;
     const vector<pair<int, int>> indices = getSecDiagMatrixIndices(make_pair(0, 0), squareN);
     createSectionsOnSecDiag(indices, sections, make_pair(0, 0), make_pair(squareN - 1,  squareN - 1));
     getOriginalMatrix(source, h_matrix, N);
-    MatrixSectionProcessorCPU processor(originalMatrix, sections);
-    processor.getMinCostAndPathOnSections(originalMatrix, source, sink );
-
 }
 
 inline PathInfo DazeRouter::findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins)
 {
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
-    processor.getMinCostAndPathOnSections(originalMatrix, source, sink );
-    PathInfo info = processor.selectFromMinCostAndPath(sections, originalMatrix, source, sink, uncPins);
+    auto sinkCur = make_pair(sink.first - source.first, sink.second - source.second);
+    auto sourceCur = make_pair(0, 0);
+    processor.getMinCostAndPathOnSections(originalMatrix, sourceCur, sinkCur);
+    PathInfo info = processor.selectFromMinCostAndPath(sections, originalMatrix, sourceCur, sinkCur, uncPins);
     return info;
 }
 
