@@ -36,3 +36,6 @@ add_test(NAME sameMatrixRowCol COMMAND sameRowCol)
 
 add_executable(matrixFixedPartition matrixFixedPartition.cpp ../source/util.cpp)
 add_test(NAME matrixFixedMatrixPartition COMMAND matrixFixedPartition)
+
+add_executable(checkViaMap checkViaMap.cpp ../source/util.cpp)
+add_test(NAME checkViaPathMap COMMAND checkViaMap)

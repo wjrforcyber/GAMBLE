@@ -92,6 +92,8 @@ struct PathInfo {
         while(tmpRecord != extenUncDir[iDir])
         {
             path.push_back(tmpRecord);
+            assert(isLocVia.count(tmpRecord) == 0);
+            isLocVia[tmpRecord] = false;
             cost += originalMatrix[tmpRecord.first][tmpRecord.second];
             tmpRecord.first += dx[iDir];
             tmpRecord.second += dy[iDir];
