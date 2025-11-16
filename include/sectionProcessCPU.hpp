@@ -392,9 +392,25 @@ inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const ve
         for (int j = 0; j <squareN; j++) {
             // if exceed the boundaries, then set the cost to INF.
             //if(i + source.first >= N || ((i+source.first) * N + (j+source.second)) >= N)
-            if(i + source.first >= N || j+source.second >= N)
+            if(i + source.first >= N)
             {
-                originalMatrixExtract[i][j] = INF;
+                if(j + source.second == N - 1)
+                {
+                    originalMatrixExtract[i][j] = 0;
+                }
+                else {
+                    originalMatrixExtract[i][j] = INF;
+                }
+            }
+            else if(j + source.second >= N)
+            {
+                if(i + source.first == N - 1)
+                {
+                    originalMatrixExtract[i][j] = 0;
+                }
+                else {
+                    originalMatrixExtract[i][j] = INF;
+                }
             }
             else {
                 //originalMatrixExtract[i][j] = h_matrix[i + source.first][(i+source.first) * N + (j+source.second)];

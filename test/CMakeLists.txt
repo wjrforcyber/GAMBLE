@@ -42,3 +42,6 @@ add_test(NAME checkViaPathMap COMMAND checkViaMap)
 
 add_executable(checkSpecialSource checkSpecialSource.cpp ../source/util.cpp)
 add_test(NAME checkSpecialMatrixSource COMMAND checkSpecialSource)
+
+add_executable(iterAllPins iterAllPins.cpp ../source/util.cpp)
+add_test(NAME iterAllMatrixPins COMMAND iterAllPins)
