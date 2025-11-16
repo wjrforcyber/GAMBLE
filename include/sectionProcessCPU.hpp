@@ -302,18 +302,37 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
         pair<int, int> pinLU;
         pair<int, int> pinLR;
         bool needFlip = false;
-        if(pins[i].first >= pins[i - 1].first && pins[i].second <= pins[i - 1].second)
+        
+        pair<int, int> pinLUSwap;
+        pair<int, int> pinLRSwap;
+        if(pins[i - 1].first > pins[i].first)
         {
+            pinLUSwap = pins[i];
+            pinLRSwap = pins[i - 1];
+        }
+        else {
+            pinLUSwap = pins[i - 1];
+            pinLRSwap = pins[i];
+        }
+        
+        if(pinLRSwap.first >= pinLUSwap.first && pinLRSwap.second <= pinLUSwap.second)
+        {
+            cout << "Flipped" << endl;
             needFlip = true;
         }
         vector<vector<int>> costSwapOnCondition(N, vector<int> (N));
-        squareN = abs(pins[i].first - pins[i-1].first) + 1 > abs(pins[i].second - pins[i-1].second) + 1 ? abs(pins[i].first - pins[i-1].first) + 1 : abs(pins[i].second - pins[i-1].second) + 1;
-        swapOnCondition(pinLU, pinLR, costSwapOnCondition, pins[i-1], pins[i], cost, N);
+        squareN = abs(pinLRSwap.first - pinLUSwap.first) + 1 > abs(pinLRSwap.second - pinLUSwap.second) + 1 ? abs(pinLRSwap.first - pinLUSwap.first) + 1 : abs(pinLRSwap.second - pinLUSwap.second) + 1;
+        cout << "SquareN is " << squareN << endl;
+        swapOnCondition(pinLU, pinLR, costSwapOnCondition, pinLUSwap, pinLRSwap, cost, N);
         cout << "Left upper (" << pinLU.first << "," << pinLU.second << ") (" <<  pinLR.first << "," << pinLR.second << ")" <<endl;
         preProcess(pinLU, pinLR, costSwapOnCondition, N);
         //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
         vector<pair<int, int>> uncPins = {};
         PathInfo p = findMinCostPath(pinLU, pinLR, uncPins);
+        if(p.cost == INF)
+        {
+            continue;
+        }
         updateRealPathMap(p, pinLU, squareN, needFlip);
         allPathInfo.push_back(p);
     }
