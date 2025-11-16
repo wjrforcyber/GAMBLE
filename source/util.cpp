@@ -77,3 +77,22 @@ vector<Matrix> partLargeM(const vector<vector<int>>& inM, const int nWin)
     }
     return results;
 }
+
+/*!
+  \brief Helper function on checking all pins on the result path.
+*/
+bool checkAllPinsOnPath(const vector<pair<int, int>>& res, const vector<pair<int, int>>& pins)
+{
+    for(const auto &item: pins)
+    {
+        auto it = std::find(res.begin(), res.end(), item);
+        if(it != res.end())
+        {
+            continue;
+        }
+        else {
+            return false;
+        }
+    }
+    return true;
+}
