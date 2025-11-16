@@ -199,6 +199,7 @@ protected:
         int &costUpdate = realUpdatePathInfo.cost;
         map<pair<int, int>, bool> &isViaUpdate = realUpdatePathInfo.isLocVia;
         vector<pair<int, int>> &pathUpdate = realUpdatePathInfo.path;
+        // Only need to check for sink, because (0,0) must be on the path
         if(path.size() > 0 && (path[path.size() - 1].first + path[path.size() - 1].second == nSize - 1))
         {
             for( i = path.size() - 1; i >= 0; i--)
@@ -210,13 +211,6 @@ protected:
                 }
                 costUpdate += originalMatrix[path[i].first][path[i].second];
             }
-            if(i == -1)
-            {
-                realUpdatePathInfo.cost = INF;
-                realUpdatePathInfo.path.clear();
-                realUpdatePathInfo.isLocVia.clear();
-                return realUpdatePathInfo;
-            }
             pathUpdate.insert(pathUpdate.end(), path.begin() + i, path.end() );
             for(auto item = path.begin() + i; item < path.end(); item++)
             {
@@ -225,6 +219,13 @@ protected:
         }
         else if(path.size() > 0 && (path[0].first + path[0].second == nSize - 1))
         {
+            if(isLocVia.count(realSink) == 0)
+            {
+                realUpdatePathInfo.cost = INF;
+                realUpdatePathInfo.path.clear();
+                realUpdatePathInfo.isLocVia.clear();
+                return realUpdatePathInfo;
+            }
             for( i = 0 ; i < path.size(); i++)
             {
                 if(path[i].first == realSink.first && path[i].second == realSink.second)
@@ -233,13 +234,6 @@ protected:
                     break;
                 }
                 costUpdate += originalMatrix[path[i].first][path[i].second];
-            }
-            if(i == path.size())
-            {
-                realUpdatePathInfo.cost = INF;
-                realUpdatePathInfo.path.clear();
-                realUpdatePathInfo.isLocVia.clear();
-                return realUpdatePathInfo;
             }
             //i = (i == path.size()) ? path.size() - 1 : i;
             pathUpdate.insert(pathUpdate.end(), path.begin(), path.begin() + i + 1 );
@@ -283,10 +277,11 @@ class DazeRouter {
         pair<int, int> route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res);
     
     protected:
+        void swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N);
         void preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N);
         void getOriginalMatrix(const pair<int, int>& source, const vector<vector<int>> h_matrix, const int N);
         PathInfo findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins);
-        void updateRealPathMap(PathInfo& p, const pair<int, int>& rSource);
+        void updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip);
         void cleanUpPath(vector<pair<int, int>> &res, const vector<PathInfo> &allPathInfo);
     private:
         int squareN;
@@ -303,11 +298,23 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
     allPathInfo.clear();
     for(auto i = 1; i < pins.size(); i++)
     {
-        preProcess(pins[i-1], pins[i], cost, N);
+        cout << "+++++++++Working on (" << pins[i-1].first << "," << pins[i - 1].second << ")(" <<pins[i].first << "," <<pins[i].second<<")+++++++++" << endl;
+        pair<int, int> pinLU;
+        pair<int, int> pinLR;
+        bool needFlip = false;
+        if(pins[i].first >= pins[i - 1].first && pins[i].second <= pins[i - 1].second)
+        {
+            needFlip = true;
+        }
+        vector<vector<int>> costSwapOnCondition(N, vector<int> (N));
+        squareN = abs(pins[i].first - pins[i-1].first) + 1 > abs(pins[i].second - pins[i-1].second) + 1 ? abs(pins[i].first - pins[i-1].first) + 1 : abs(pins[i].second - pins[i-1].second) + 1;
+        swapOnCondition(pinLU, pinLR, costSwapOnCondition, pins[i-1], pins[i], cost, N);
+        cout << "Left upper (" << pinLU.first << "," << pinLU.second << ") (" <<  pinLR.first << "," << pinLR.second << ")" <<endl;
+        preProcess(pinLU, pinLR, costSwapOnCondition, N);
         //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
         vector<pair<int, int>> uncPins = {};
-        PathInfo p = findMinCostPath(pins[i-1], pins[i], uncPins);
-        updateRealPathMap(p, pins[i-1]);
+        PathInfo p = findMinCostPath(pinLU, pinLR, uncPins);
+        updateRealPathMap(p, pinLU, squareN, needFlip);
         allPathInfo.push_back(p);
     }
     //Since we do not encode connected attribute on the location, so we need an extra filtering on duplicated locations.
@@ -317,12 +324,46 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
     return make_pair(clocks, computeClocks);
 }
 
-inline void DazeRouter::updateRealPathMap(PathInfo& p, const pair<int, int>& rSource)
+inline void DazeRouter::swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N)
+{
+    if(pinUROri.first >= pinLUOri.first && pinUROri.second <= pinLUOri.second)
+    {
+        pinLU.first = pinLUOri.first;
+        pinLU.second = squareN - 1 - pinLUOri.second;
+        pinLR.first = pinUROri.first;
+        pinLR.second = squareN - 1 - pinUROri.second;
+        cout << "swaped M" << endl;
+        for(int i = 0; i < N; i++)
+        {
+            for(int j = 0; j < N; j++)
+            {
+                costSwapOnCondition[i][j] = cost[i][N - 1 - j];
+                cout << costSwapOnCondition[i][j] << " ";
+            }
+            cout << endl;
+        }
+    }
+    else {
+        pinLU = pinLUOri;
+        pinLR = pinUROri;
+        for(int i = 0; i < N; i++)
+        {
+            for(int j = 0; j < N; j++)
+            {
+                costSwapOnCondition[i][j] = cost[i][j];
+            }
+        }
+    }
+}
+
+
+inline void DazeRouter::updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip)
 {
     map<pair<int, int>, bool> tmpUpdate;
     for(auto &item:p.isLocVia)
     {
-        auto itemUpdate = make_pair(item.first.first + rSource.first, item.first.second + rSource.second);
+        int offSetColIndex = needFlip ? squareN - 1 - item.first.second : item.first.second;
+        auto itemUpdate = make_pair(item.first.first + rSource.first, rSource.second + offSetColIndex);
         tmpUpdate[itemUpdate] = item.second;
     }
     p.isLocVia.clear();
@@ -377,7 +418,6 @@ inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const ve
 inline void DazeRouter::preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N)
 {
     sections.clear();
-    squareN = abs(source.first - sink.first) + 1 > abs(source.second - sink.second) + 1 ? abs(source.first - sink.first) + 1 : abs(source.second - sink.second) + 1;
     const vector<pair<int, int>> indices = getSecDiagMatrixIndices(make_pair(0, 0), squareN);
     createSectionsOnSecDiag(indices, sections, make_pair(0, 0), make_pair(squareN - 1,  squareN - 1));
     getOriginalMatrix(source, h_matrix, N);

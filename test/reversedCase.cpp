@@ -3,84 +3,98 @@
 #include <iostream>
 #include <utility>
 #include "sectionProcessCPU.hpp"
+#include "mazeRouter.hpp"
 
+/*!
+  \brief Give a reversed case such as when iterating, second one might not be on the lower right coner, we need a process of swap and swap back at the end.
+*/
 const int N = 5;
+//, NumBlks, NumPins;
+const int dx[] = {-1, 1, 0, 0};
+const int dy[] = {0, 0, -1, 1};
 
+void dfs(int x, int y, vector<vector<int>> &cost) {
+    if(cost[x][y] != -1) return;
+    cost[x][y] = 0;
+    for(int d = 0; d < 4; d++) {
+        int nx = x + dx[d], ny = y+ dy[d];
+        if(0 <= nx && nx < N && 0 <= ny && ny < N)
+            dfs(nx, ny, cost);
+    }
+}
+int evaluate(const vector<pair<int, int>> &res, vector<vector<int>> cost, const int N) {   
+    const int turnCost = 50; 
+    int tot = 0;
+    for(auto e : res) {
+        assert(cost[e.first][e.second] != -1);
+        tot += cost[e.first][e.second];
+        cost[e.first][e.second] = -1;
+    }
+    
+    int turnCount = 0;
+    for(int i = 0; i < N; i++)
+        for(int j = 0; j < N; j++) if(cost[i][j] == -1) {
+            int test[2] = {0, 0};
+            for(int d = 0; d < 4; d++) {
+                int x = i + dx[d], y = j + dy[d];
+                test[d / 2] |= (0 <= x && x < N && 0 <= y && y < N && cost[x][y] == -1);
+            }
+            turnCount += test[0] && test[1];
+        }
+    dfs(res[0].first, res[0].second, cost);
+    tot += turnCount * turnCost;
+    
+    for(auto e : res) 
+        if(cost[e.first][e.second] == -1) tot = -1;
+    return tot;
+}
+
+
+/*!
+  \brief This test case use a simple method to make sure at least every pin is connected to a single net.
+*/
 int main() {
-    int squareN;
-    // The indices must has real source and sink as para
-    pair<int,int> source = {0,4};
-    pair<int,int> sink = {4,0};
-    squareN = abs(source.first - sink.first) + 1 > abs(source.second - sink.second) + 1 ? abs(source.first - sink.first) + 1 : abs(source.second - sink.second) + 1;
-    assert(squareN == 5);
-
-    //This should provide exact value of the LU and RL position
-    auto indices = getSecDiagMatrixIndices(make_pair(0, 0), squareN);
-
-    //Fliped real source
-    pair<int, int> sourceR = {source.first, (squareN - 1) - source.second};
-    pair<int, int> sinkR = {sink.first, (squareN - 1) - sink.second};
-    assert(sourceR.first == 0 && sourceR.second == 0);
-    cout << "Sink: " << sinkR.first << " " << sinkR.second << endl;
-    assert(sinkR.first == 4 && sinkR.second == 4);
-
+    vector<pair<int, int>> pins = {make_pair(0, 3), make_pair(3, 1)};
     // Create source matrix
-    vector<int> h_matrix(N * N);
-    for (int i = 0; i < N * N; i++) {
-        h_matrix[i] = static_cast<int>(rand()) % 10;
-    }
-
-    //print out the original matrix
-    cout << "Very Original Matrix:" << endl;
+    //show original matrix
+    cout << "Origianl cost matrix: " << endl;
+    vector<vector<int>> h_matrix(N, vector<int> (N));
     for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            cout << h_matrix[i * N + j] << " ";
+        for(int j = 0; j < N; j++)
+        {
+            h_matrix[i][j] = static_cast<int>(rand()) % 10;
+            cout << h_matrix[i][j] << " ";
         }
         cout << endl;
     }
-    vector<vector<int>> vOriginalMatrix(N, vector<int>(N));
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            //should add source node shift here
-            vOriginalMatrix[i][j] = h_matrix[i * N + j];
-        }
-    }
-    vector<MatrixSection> sections;
-    // Create Section should have (0,0) and (squareN - 1, squareN -1).
-    createSectionsOnSecDiag(indices, sections,make_pair(0, 0), make_pair(squareN - 1, squareN - 1));
-    assert(sections.size() == 10);
+    int squareN;
+    
+    
 
-    // Convert flat matrix to 2D vector
-    vector<vector<int>> originalMatrix(squareN, vector<int>(squareN));
-    for (int i = 0; i < squareN; i++) {
-        for (int j = 0; j <squareN; j++) {
-            //should add source node shift here
-            originalMatrix[i][j] = h_matrix[(i + sourceR.first) * N + (j + sourceR.second)];
-        }
+    vector<pair<int, int>> cpures;
+    MazeRouter mazeRouter;
+    auto cputime = mazeRouter.route(h_matrix, N, pins, cpures);
+    //show the path
+    cout << "Original maze route Path: ";
+    for (auto [r, c] : cpures) {
+        cout << "(" << r << "," << c << ") ";
     }
+    cout << endl;
+    cout << "Cost is " << evaluate(cpures, h_matrix, N);
+    cout << endl;
     
-    cout << "Converted cost matrix "<< endl;
-    for (int i = 0; i < squareN; i++) {
-        for (int j = 0; j < squareN; j++) {
-            cout << originalMatrix[i][j] << "(" << vOriginalMatrix[i + sourceR.first][j + sourceR.second] << ")";
-            assert(originalMatrix[i][j] == vOriginalMatrix[i + sourceR.first][j + sourceR.second]);
-        }
-        cout << endl;
+    DazeRouter dazeRouter;
+    vector<pair<int, int>> dres;
+    auto dTime = dazeRouter.route(h_matrix, N, pins, dres);
+    // Print the final cost and the path selected
+    cout << "The final cost is " << evaluate(dres, h_matrix, N) << ". " << endl;
+    cout << "The final path is " << endl;
+     //show the path
+    cout << "Path: ";
+    for (auto [r, c] : dres) {
+        cout << "(" << r << "," << c << ") ";
     }
-    
-    MatrixSectionProcessorCPU processor(originalMatrix, sections);
-    processor.getMinCostAndPathOnSections(originalMatrix, sourceR, sinkR );
-    vector<pair<int, int>> uncPins = {};
-    PathInfo info =processor.selectFromMinCostAndPath(sections, originalMatrix, sourceR, sinkR, uncPins);
-    assert(info.path[0] == sourceR && info.path[info.path.size() - 1] == sinkR);
-    //Reverse the path, use squareN - i do the reverse
-    info.reverseInplace(squareN);
-    assert(info.path[0] == source && info.path[info.path.size() - 1] == sink);
-    cout << " The final cost is " << info.cost << ", and the final path is " << endl;
-    for(auto pos: info.path)
-    {
-        cout << "(" << pos.first << "," << pos.second << ")";
-    }
+    cout << endl;
     cout << endl;
     return 0;
 }
