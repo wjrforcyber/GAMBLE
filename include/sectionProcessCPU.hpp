@@ -394,7 +394,7 @@ inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const ve
             //if(i + source.first >= N || ((i+source.first) * N + (j+source.second)) >= N)
             if(i + source.first >= N)
             {
-                if(j + source.second == N - 1)
+                if(j == squareN - 1)
                 {
                     originalMatrixExtract[i][j] = 0;
                 }
@@ -404,7 +404,7 @@ inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const ve
             }
             else if(j + source.second >= N)
             {
-                if(i + source.first == N - 1)
+                if(i == squareN - 1)
                 {
                     originalMatrixExtract[i][j] = 0;
                 }
