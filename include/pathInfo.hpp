@@ -11,6 +11,46 @@ struct PathInfo {
     int cost;
     vector<pair<int, int>> path;
     map<pair<int,int>, bool> isLocVia;
+    // construct a PathInfo
+    void cons(int c, vector<pair<int, int>> p)
+    {
+        cost = c;
+        path = p;
+        getDirectionChanges(path);
+    }
+
+    void getDirectionChanges(const vector<pair<int, int>>& p) {
+        if (p.size() < 3) {
+            // For paths with less than 3 points, no direction changes can occur
+            for (const auto& point : p) {
+                isLocVia[point] = false;
+            }
+        }
+        
+        // Initialize all points to false (no direction change)
+        for (const auto& point : p) {
+            isLocVia[point] = false;
+        }
+        
+        // Calculate direction changes for intermediate points
+        for (size_t i = 1; i < p.size() - 1; i++) {
+            const auto& prev = p[i-1];
+            const auto& curr = p[i];
+            const auto& next = p[i+1];
+            
+            // Calculate direction from prev to curr
+            pair<int, int> dir1 = {curr.first - prev.first, curr.second - prev.second};
+            
+            // Calculate direction from curr to next
+            pair<int, int> dir2 = {next.first - curr.first, next.second - curr.second};
+            
+            // Check if directions are different
+            if (dir1 != dir2) {
+                isLocVia[curr] = true;
+            }
+        }
+    }
+
     // check if a location is via
     bool isVia(pair<int, int> loc)
     {
@@ -85,6 +125,14 @@ struct PathInfo {
             {
                 break;
             }
+            if(iDir == 4)
+            {
+                break;
+            }
+        }
+        if(iFound == false)
+        {
+            return;
         }
         // fetch path from extenUncDir[iDir] to pin
         pair<int, int> tmpRecord = pin;
@@ -137,6 +185,11 @@ struct PathInfo {
     {
         for(int i = 0 ;i < uncPins.size(); i++)
         {
+            //if path has the pin, continue
+            if(find(path.begin(), path.end(), uncPins[i]) != path.end())
+            {
+                continue;
+            }
             costUncPin(originalMatrix, path, uncPins[i]);
         }
     }

@@ -63,6 +63,7 @@ int main() {
             h_matrix[i][j] = static_cast<int>(rand()) % 10;
     }
     int squareN;
+    auto rh_matrix =  h_matrix;
 
     vector<pair<int, int>> cpures;
     MazeRouter mazeRouter;
@@ -75,13 +76,13 @@ int main() {
     cout << endl;
     cout << "Cost is " << evaluate(cpures, h_matrix, N);
     cout << endl;
-    
+
     DazeRouter dazeRouter;
     vector<pair<int, int>> dres;
-    auto dTime = dazeRouter.route(h_matrix, N, pins, dres);
+    auto dTime = dazeRouter.route(rh_matrix, N, pins, dres);
     assert(checkAllPinsOnPath(dres, pins));
     // Print the final cost and the path selected
-    cout << "The final cost is " << evaluate(dres, h_matrix, N) << ". " << endl;
+    cout << "The final cost is " << evaluate(dres, rh_matrix, N) << ". " << endl;
     cout << "The final path is " << endl;
      //show the path
     cout << "Path: ";

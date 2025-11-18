@@ -1,4 +1,5 @@
 #include "util.hpp"
+#include <cassert>
 #include <utility>
 #include <vector>
 /*!
@@ -91,8 +92,29 @@ bool checkAllPinsOnPath(const vector<pair<int, int>>& res, const vector<pair<int
             continue;
         }
         else {
+            cout << "(" << item.first << "," << item.second << ")" << "is not on the path";
             return false;
         }
     }
     return true;
+}
+
+/*!
+  \brief Collect all pins that not on the path.
+*/
+void collectAllPinsOnPath(const vector<pair<int, int>>& res, const vector<pair<int, int>>& pins, vector<pair<int, int>>& unCFinalPins)
+{
+    for(const auto &item: pins)
+    {
+        auto it = std::find(res.begin(), res.end(), item);
+        if(it != res.end())
+        {
+            continue;
+        }
+        else {
+            cout << "(" << item.first << "," << item.second << ")" << "is not on the path" << endl;
+            unCFinalPins.push_back(item);
+            //return false;
+        }
+    }
 }

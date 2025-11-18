@@ -2,7 +2,9 @@
 #define SECTION_OPS_CPU_HPP
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <iostream>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include "mazeRouter.hpp"
@@ -70,7 +72,113 @@ public:
         return sections;
     }
     
-    PathInfo selectFromMinCostAndPath(vector<MatrixSection>& sections, std::vector<std::vector<int>>& originalMatrix, const pair<int, int>& rSource, const pair<int, int>& rSink, const vector<pair<int, int>>& uncPins)
+    PathInfo creatAInfoOnFly(vector<std::vector<int>>& originalMatrix, const pair<int, int>& rSource, const pair<int, int>& rSink)
+    {
+        PathInfo UpCreate;
+        UpCreate.path.clear();
+        UpCreate.cost = 0;
+        UpCreate.isLocVia.clear();
+        
+        PathInfo DownCreate;
+        DownCreate.path.clear();
+        DownCreate.cost = 0;
+        DownCreate.isLocVia.clear();
+        
+        bool fineOnUp = true;
+        bool fineOnDown = true;
+        //Up
+        for(auto j = 0 ; j < rSink.second + 1; j++)
+        {
+            if(originalMatrix[0][j] == INF)
+            {
+                cout << "Failed on upper path." << endl;
+                UpCreate.path.clear();
+                UpCreate.cost = INF;
+                UpCreate.isLocVia.clear();
+                fineOnUp = false;
+                break;
+            }
+            UpCreate.path.push_back(make_pair(0, j));
+            UpCreate.cost += originalMatrix[0][j];
+            if(j == rSink.second)
+            {
+                UpCreate.isLocVia[make_pair(0, j)] = true;
+            }
+            else {
+                UpCreate.isLocVia[make_pair(0, j)] = false;
+            }
+        }
+        if(fineOnUp)
+        {
+            for(auto i = 1 ; i < rSink.first + 1; i++)
+            {
+                if(originalMatrix[i][rSink.second] == INF)
+                {
+                    cout << "Failed on upper path." << endl;
+                    UpCreate.path.clear();
+                    UpCreate.cost = INF;
+                    UpCreate.isLocVia.clear();
+                    break;
+                }
+                UpCreate.path.push_back(make_pair(i, rSink.second));
+                UpCreate.cost += originalMatrix[i][rSink.second];
+                UpCreate.isLocVia[make_pair(i, rSink.second)] = false;
+            }
+        }
+        
+        //Down
+        for(auto i = 0 ; i < rSink.first + 1; i++)
+        {
+            if(originalMatrix[i][0] == INF)
+            {
+                cout << "Failed on lower path." << endl;
+                DownCreate.path.clear();
+                DownCreate.cost = INF;
+                DownCreate.isLocVia.clear();
+                fineOnDown = false;
+                break;
+            }
+            DownCreate.path.push_back(make_pair(i, 0));
+            DownCreate.cost += originalMatrix[i][0];
+            if(i == rSink.first)
+            {
+                DownCreate.isLocVia[make_pair(i, 0)] = true;
+            }
+            else {
+                DownCreate.isLocVia[make_pair(i, 0)] = false;
+            }
+        }
+        if(fineOnDown)
+        {
+            for(auto j = 1 ; j < rSink.second + 1; j++)
+            {
+                if(originalMatrix[rSink.first][j] == INF)
+                {
+                    cout << "Failed on lower path." << endl;
+                    DownCreate.path.clear();
+                    DownCreate.cost = INF;
+                    DownCreate.isLocVia.clear();
+                    break;
+                }
+                DownCreate.path.push_back(make_pair(rSink.first, j));
+                DownCreate.cost += originalMatrix[rSink.first][j];
+                DownCreate.isLocVia[make_pair(rSink.first, j)] = false;
+            }
+        }
+        cout << "Downpath cost " << DownCreate.cost << " Uppath cost " << UpCreate.cost << endl;
+        if(DownCreate.cost == INF && UpCreate.cost == INF)
+        {
+            cout << "Nooooo..." << endl;
+        }
+        if(DownCreate.cost < UpCreate.cost)
+        {
+            cout << "return lower path" << endl;
+            return DownCreate;
+        }
+        return UpCreate;
+    }
+    
+    PathInfo selectFromMinCostAndPath(vector<MatrixSection>& sections, vector<std::vector<int>>& originalMatrix, const pair<int, int>& rSource, const pair<int, int>& rSink, const vector<pair<int, int>>& uncPins)
     {
         int nSize = sections.size();
         int nSizePairDiag = (nSize+1)/2;
@@ -90,10 +198,10 @@ public:
                 sections[i].isLocVia[sections[i].bPath[sections[i].bPath.size() - 1]] = true;
             }
             // TODO @Jingren: Source in LU and Sink in RL, or set to INF. Corner case, also give a tie breaker.
-            if(!sections[i].hasLoc(rSource) || !sections[i + nSizePairDiag].hasLoc(rSink))
-            {
-                costFinal[i].cost = INF;
-            }
+            //if(!sections[i].hasLoc(rSource) || !sections[i + nSizePairDiag].hasLoc(rSink))
+            //{
+            //    costFinal[i].cost = INF;
+            //}
             costFinal[i].path.reserve(sections[i].bPath.size() + sections[i + nSizePairDiag].bPath.size());
             costFinal[i].path.insert(costFinal[i].path.end(), sections[i].bPath.begin(), sections[i].bPath.end());
             costFinal[i].path.insert(costFinal[i].path.end(), sections[i + nSizePairDiag].bPath.begin() + 1, sections[i + nSizePairDiag].bPath.end());
@@ -104,12 +212,6 @@ public:
                 cout << "(" << costFinal[i].path[iPathOri].first << "," << costFinal[i].path[iPathOri].second << ")";
             }
             cout << endl;
-            // This will update both cost and paths
-            if(costFinal[i].cost == INF)
-            {
-                cout << "   Cost defined as large, continue." << endl;
-                continue;
-            }
             //Update vias check inside the update
             costFinal[i].isLocVia.insert(sections[i].isLocVia.begin(), sections[i].isLocVia.end());
             costFinal[i].isLocVia.insert(sections[i + nSizePairDiag].isLocVia.begin(), sections[i + nSizePairDiag].isLocVia.end());
@@ -128,6 +230,11 @@ public:
                 [](const PathInfo& a, const PathInfo& b) {
                     return a.cost < b.cost;
                 });
+        if(costFinal[0].cost == INF)
+        {
+            PathInfo nCreate = creatAInfoOnFly(originalMatrix, rSource, rSink);
+            return nCreate;
+        }
         if(costFinal[0].cost == INF)
         {
             cout << "Failed to find one. Probably not a corner case." << endl;
@@ -277,12 +384,14 @@ class DazeRouter {
         pair<int, int> route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res);
     
     protected:
+        bool calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo);
         void swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N);
         void preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N);
         void getOriginalMatrix(const pair<int, int>& source, const vector<vector<int>> h_matrix, const int N);
         PathInfo findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins);
-        void updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip);
+        void updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip, int N);
         void cleanUpPath(vector<pair<int, int>> &res, const vector<PathInfo> &allPathInfo);
+        bool calMinPathCost(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>>& cost, int N, int& c, vector<pair<int, int>>& p);
     private:
         int squareN;
         std::vector<std::vector<int>> originalMatrix;
@@ -291,28 +400,171 @@ class DazeRouter {
 
 inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res)
 {
+    vector<pair<int,int>> unCFinalPins;
     auto clocks = clock();
     auto computeClocks = clock();
     assert(pins.size() >= 2);
     vector<PathInfo> allPathInfo;
+    unCFinalPins.clear();
     allPathInfo.clear();
     for(auto i = 1; i < pins.size(); i++)
     {
-        cout << "+++++++++Working on (" << pins[i-1].first << "," << pins[i - 1].second << ")(" <<pins[i].first << "," <<pins[i].second<<")+++++++++" << endl;
+        calBetweenTwoPins(pins[i-1], pins[i], cost, N, allPathInfo);
+    }
+    //Since we do not encode connected attribute on the location, so we need an extra filtering on duplicated locations.
+    cleanUpPath(res, allPathInfo);
+    collectAllPinsOnPath(res, pins, unCFinalPins);
+    
+    if(unCFinalPins.size() != 0)
+    {
+        for(auto &unPin : unCFinalPins)
+        {
+            for(auto &pin : pins)
+            {
+                if(find(unCFinalPins.begin(), unCFinalPins.end(), pin)!=unCFinalPins.end())
+                {
+                    continue;
+                }
+                if(pin != unPin)
+                {
+                    int c = 0;
+                    vector<pair<int,int>> p;
+                    p.clear();
+                    //auto ret = calBetweenTwoPins(pin, unPin, cost, N, allPathInfo);
+                    auto ret = calMinPathCost(pin, unPin, cost, N, c, p);
+                    if(ret == true)
+                    {
+                        PathInfo fixP;
+                        fixP.cons(c, p);
+                        allPathInfo.push_back(fixP);
+                        break;
+                    }
+                }
+            }
+        }
+        unCFinalPins.clear();
+        res.clear();
+        cleanUpPath(res, allPathInfo);
+        collectAllPinsOnPath(res, pins, unCFinalPins);
+        assert(unCFinalPins.size() == 0);
+    }
+    
+    
+    
+    computeClocks = clock() - computeClocks;
+    clocks = clock() - clocks;
+    return make_pair(clocks, computeClocks);
+}
+
+inline bool DazeRouter::calMinPathCost(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, 
+    const vector<vector<int>>& cost, int N, int& c, vector<pair<int, int>>& p) {
+
+    // Directions: up, down, left, right
+    vector<pair<int, int>> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
+    // Initialize distance and previous arrays
+    vector<vector<int>> dist(N, vector<int>(N, INF));
+    vector<vector<pair<int, int>>> prev(N, vector<pair<int, int>>(N, {-1, -1}));
+    vector<vector<bool>> visited(N, vector<bool>(N, false));
+
+    // Priority queue for Dijkstra's algorithm
+    priority_queue<pair<int, pair<int, int>>, 
+        vector<pair<int, pair<int, int>>>,
+        greater<pair<int, pair<int, int>>>> pq;
+
+    // Start from the first pin
+    dist[pinFirst.first][pinFirst.second] = cost[pinFirst.first][pinFirst.second];
+    pq.push({cost[pinFirst.first][pinFirst.second], pinFirst});
+
+    while (!pq.empty()) {
+    auto [currentCost, currentPos] = pq.top();
+    pq.pop();
+
+    int x = currentPos.first;
+    int y = currentPos.second;
+
+    if (visited[x][y]) continue;
+    visited[x][y] = true;
+
+    // If we reached the destination, we can break early
+    if (currentPos == pinSecond) {
+    break;
+    }
+
+    // Explore neighbors
+    for (auto& dir : directions) {
+    int nx = x + dir.first;
+    int ny = y + dir.second;
+
+    // Check if neighbor is within bounds
+    if (nx >= 0 && nx < N && ny >= 0 && ny < N) {
+    // Check if the cost is not INF (assuming INF is a very large number)
+    if (cost[nx][ny] < INF) {
+        int newCost = dist[x][y] + cost[nx][ny];
+        
+        if (newCost < dist[nx][ny]) {
+            dist[nx][ny] = newCost;
+            prev[nx][ny] = {x, y};
+            pq.push({newCost, {nx, ny}});
+        }
+    }
+    }
+    }
+    }
+
+    // Check if destination is reachable
+    if (dist[pinSecond.first][pinSecond.second] == INF) {
+    return false; // No path found
+    }
+
+    // Reconstruct the path
+    p.clear();
+    pair<int, int> current = pinSecond;
+
+    while (current != pinFirst) {
+    p.push_back(current);
+    current = prev[current.first][current.second];
+
+    // Safety check to avoid infinite loop
+    if (current == make_pair(-1, -1)) {
+    return false;
+    }
+    }
+    p.push_back(pinFirst);
+
+    // Reverse to get path from start to end
+    reverse(p.begin(), p.end());
+    assert(p[0] == pinFirst && p[p.size() - 1] == pinSecond);
+    //show the path
+    cout << "THE path reconsidered " << endl;
+    for(auto &loc: p)
+    {
+        cout << "(" << loc.first << "," << loc.second << ")";
+    }
+    cout << endl;
+
+    c = dist[pinSecond.first][pinSecond.second];
+    assert(c < INF);
+    return true;
+}
+
+inline bool DazeRouter::calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo)
+{
+       cout << "+++++++++Working on (" << pinFirst.first << "," << pinFirst.second << ")(" <<pinSecond.first << "," << pinSecond.second<<")+++++++++" << endl;
         pair<int, int> pinLU;
         pair<int, int> pinLR;
         bool needFlip = false;
         
         pair<int, int> pinLUSwap;
         pair<int, int> pinLRSwap;
-        if(pins[i - 1].first > pins[i].first)
+        if(pinFirst.first > pinSecond.first)
         {
-            pinLUSwap = pins[i];
-            pinLRSwap = pins[i - 1];
+            pinLUSwap = pinSecond;
+            pinLRSwap = pinFirst;
         }
         else {
-            pinLUSwap = pins[i - 1];
-            pinLRSwap = pins[i];
+            pinLUSwap = pinFirst;
+            pinLRSwap = pinSecond;
         }
         
         if(pinLRSwap.first >= pinLUSwap.first && pinLRSwap.second <= pinLUSwap.second)
@@ -331,26 +583,29 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
         PathInfo p = findMinCostPath(pinLU, pinLR, uncPins);
         if(p.cost == INF)
         {
-            continue;
+            return false;
         }
-        updateRealPathMap(p, pinLU, squareN, needFlip);
+        updateRealPathMap(p, pinLU, squareN, needFlip, N);
         allPathInfo.push_back(p);
-    }
-    //Since we do not encode connected attribute on the location, so we need an extra filtering on duplicated locations.
-    cleanUpPath(res, allPathInfo);
-    computeClocks = clock() - computeClocks;
-    clocks = clock() - clocks;
-    return make_pair(clocks, computeClocks);
+        return true;
 }
 
 inline void DazeRouter::swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N)
 {
+    assert(cost[pinLUOri.first][pinLUOri.second] != INF && cost[pinUROri.first][pinUROri.second] != INF);
     if(pinUROri.first >= pinLUOri.first && pinUROri.second <= pinLUOri.second)
     {
+        assert(pinLUOri.first < pinUROri.first);
+        //auto diff = abs(pinLUOri.second - pinUROri.second);
+        //pinLU.first = pinLUOri.first;
+        //pinLU.second = pinLUOri.second - diff;
+        //pinLR.first = pinUROri.first;
+        //pinLR.second = pinUROri.second + diff;
         pinLU.first = pinLUOri.first;
-        pinLU.second = squareN - 1 - pinLUOri.second;
+        pinLU.second = N - 1 - pinLUOri.second;
         pinLR.first = pinUROri.first;
-        pinLR.second = squareN - 1 - pinUROri.second;
+        pinLR.second = N - 1-  pinUROri.second;
+        
         cout << "swaped M" << endl;
         for(int i = 0; i < N; i++)
         {
@@ -376,13 +631,21 @@ inline void DazeRouter::swapOnCondition(pair<int, int>& pinLU, pair<int, int>& p
 }
 
 
-inline void DazeRouter::updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip)
+inline void DazeRouter::updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip, int N)
 {
     map<pair<int, int>, bool> tmpUpdate;
     for(auto &item:p.isLocVia)
     {
-        int offSetColIndex = needFlip ? squareN - 1 - item.first.second : item.first.second;
-        auto itemUpdate = make_pair(item.first.first + rSource.first, rSource.second + offSetColIndex);
+        int f,s;
+        f = item.first.first + rSource.first;
+        if(needFlip)
+        {
+            s = N - 1 - (item.first.second + rSource.second);
+        }
+        else {
+            s = item.first.second + rSource.second;
+        }
+        auto itemUpdate = make_pair(f,s);
         tmpUpdate[itemUpdate] = item.second;
     }
     p.isLocVia.clear();
@@ -395,7 +658,7 @@ inline void DazeRouter::cleanUpPath(vector<pair<int, int>> &res, const vector<Pa
     set<pair<int, int>> tmpSaveUniqueLoc;
     for(const auto &pInfo : allPathInfo)
     {
-        for(const auto & [k, v] : pInfo.isLocVia)
+        for(const auto [k, v] : pInfo.isLocVia)
         {
             tmpSaveUniqueLoc.insert(k);
         }
@@ -406,6 +669,7 @@ inline void DazeRouter::cleanUpPath(vector<pair<int, int>> &res, const vector<Pa
 inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const vector<vector<int>> h_matrix, int N)
 {
     originalMatrix.clear();
+    assert(h_matrix[source.first][source.second] != INF);
     std::vector<std::vector<int>> originalMatrixExtract(squareN, std::vector<int>(squareN));
     for (int i = 0; i < squareN; i++) {
         for (int j = 0; j <squareN; j++) {
@@ -437,6 +701,7 @@ inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const ve
             }
         }
     }
+    assert(originalMatrixExtract[0][0] != INF);
     originalMatrix = originalMatrixExtract;
     cout << "Extracted matrix" << endl;
     for(auto i = 0; i < squareN; i++)

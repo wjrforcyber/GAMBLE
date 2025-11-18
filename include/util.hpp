@@ -15,6 +15,7 @@ vector<pair<int, int>> getSecDiagMatrixIndices(pair<int, int> LU, const int& squ
 void createSectionsOnSecDiag(const vector<pair<int, int>>& indices, vector<MatrixSection>& sections, pair<int, int> LU, pair<int, int> BR);
 vector<Matrix> partLargeM(const vector<vector<int>>& inM, const int nWin);
 bool checkAllPinsOnPath(const vector<pair<int, int>>& res, const vector<pair<int, int>>& pins);
+void collectAllPinsOnPath(const vector<pair<int, int>>& res, const vector<pair<int, int>>& pins, vector<pair<int, int>>& unCFinalPins);
 
 
 #endif // UTILS_HPP

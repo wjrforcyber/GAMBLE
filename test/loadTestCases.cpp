@@ -38,7 +38,14 @@ int evaluate(const vector<pair<int, int>> &res, vector<vector<int>> cost, const 
     tot += turnCount * turnCost;
 
     for(auto e : res) 
-        if(cost[e.first][e.second] == -1) tot = -1;
+    {
+        if(cost[e.first][e.second] == -1)
+        {
+            cout << "Encounter dangling (" << e.first << "," << e.second << ")" <<endl;
+            tot = -1;
+        }
+    }
+        
     return tot;
 }
 
@@ -69,6 +76,8 @@ int main() {
         //cout << "Pins (x y): " << endl;
         cin >> pins[i].first >> pins[i].second;
     }
+    vector<vector<int>> costD(N, vector<int> (N));
+    costD = cost;
     MazeRouter mazeRouter;
     auto cputime = mazeRouter.route(cost, N, pins, cpures);
     
@@ -77,7 +86,13 @@ int main() {
     auto cputimeD = dazeRouter.route(cost, N, pins, cpuresD);
     assert(checkAllPinsOnPath(cpuresD, pins));
     cout << "Original CPU version:\n" <<  "    time: " << cputime.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpures, cost, N) << endl;
-    cout << "Current CPU version:\n" <<  "    time: " << cputimeD.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpuresD, cost, N) << endl;
+    cout << "Final path" << endl;
+    for(auto &loc : cpuresD)
+    {
+        cout << "(" << loc.first << "," << loc.second << ")";
+    }
+    cout << endl;
+    cout << "Current CPU version:\n" <<  "    time: " << cputimeD.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpuresD, costD, N) << endl;
 
     return 0;
 }

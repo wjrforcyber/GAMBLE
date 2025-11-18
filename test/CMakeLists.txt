@@ -46,5 +46,8 @@ add_test(NAME checkSpecialMatrixSource COMMAND checkSpecialSource)
 add_executable(iterAllPins iterAllPins.cpp ../source/util.cpp)
 add_test(NAME iterAllMatrixPins COMMAND iterAllPins)
 
+add_executable(test10Condition test10Condition.cpp ../source/util.cpp)
+add_test(NAME ltestMatrix10Condition COMMAND test10Condition)
+
 add_executable(loadTestCases loadTestCases.cpp ../source/util.cpp)
 add_test(NAME loadMatrixTestCases COMMAND loadTestCases)
