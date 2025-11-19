@@ -4,8 +4,8 @@ add_test(NAME thrustSumMatrix COMMAND thrustSum)
 add_executable(normalize normalize.cu)
 add_test(NAME normalizeMatrix COMMAND normalize)
 
-add_executable(sectionOutGPU sectionOutGPU.cu ../sectionProcessGPU.cu)
-add_test(NAME sectionOutMatrixGPU COMMAND sectionOutGPU)
+#add_executable(sectionOutGPU sectionOutGPU.cu ../sectionProcessGPU.cu)
+#add_test(NAME sectionOutMatrixGPU COMMAND sectionOutGPU)
 
 add_executable(sectionOutCPU sectionOutCPU.cpp)
 add_test(NAME sectionOutMatrixCPU COMMAND sectionOutCPU)
@@ -48,3 +48,6 @@ add_test(NAME iterAllMatrixPins COMMAND iterAllPins)
 
 add_executable(test10Condition test10Condition.cpp ../source/util.cpp)
 add_test(NAME ltestMatrix10Condition COMMAND test10Condition)
+
+add_executable(sectionOutRoute sectionOutRoute.cu ../sectionProcessGPU.cu ../source/util.cpp)
+add_test(NAME sectionMatrixOutRoute COMMAND sectionOutRoute)

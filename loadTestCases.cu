@@ -1,5 +1,5 @@
 #include "mazeRouter.hpp"
-#include "sectionProcessCPU.hpp"
+#include "sectionProcessGPU.hpp"
 #include <iostream>
 
 int N, NumBlks, NumPins;
@@ -86,7 +86,7 @@ int main() {
     auto cputimeD = dazeRouter.route(costD, N, pins, cpuresD);
     assert(checkAllPinsOnPath(cpuresD, pins));
     cout << "Original CPU version:\n" <<  "    time: " << cputime.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpures, cost, N) << endl;
-    cout << "Current CPU version:\n" <<  "    time: " << cputimeD.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpuresD, costD, N) << endl;
+    cout << "Current GPU version:\n" <<  "    time: " << cputimeD.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpuresD, costD, N) << endl;
 
     return 0;
 }

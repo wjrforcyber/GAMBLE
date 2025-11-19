@@ -2,7 +2,7 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 #include<vector>
-#include "matrixSection.hpp"
+#include "matrixSectionGPU.hpp"
 using namespace std;
 
 struct Matrix
