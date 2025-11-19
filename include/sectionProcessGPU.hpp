@@ -8,18 +8,15 @@
 struct MatrixSection {
     int top, left;      // Upper-left corner
     int bottom, right;  // Lower-right corner
-    int* d_data;      // Device pointer for this section
+    int* d_data;        // Device pointer for this section
     int rows, cols;     // Section dimensions
 };
 
 __global__ void copySectionsKernel(int* source, int sourceRows, int sourceCols,
-    int** sections, MatrixSection* sectionInfo, 
-    int numSections);
+    int** sections, MatrixSection* sectionInfo, int numSections);
+
 __global__ void processSectionsKernel(int** sections, MatrixSection* sectionInfo, 
     int numSections, int* results);
-__global__ void copyBackSectionsKernel(int* dest, int destRows, int destCols,
-    int** sections, MatrixSection* sectionInfo,
-    int numSections);
 
 
 class MatrixSectionProcessor {
@@ -27,48 +24,46 @@ private:
     int** d_sections;
     MatrixSection* d_sectionInfo;
     int numSections;
+    std::vector<MatrixSection> h_sectionInfo; // Store host copy
     
 public:
     MatrixSectionProcessor(const std::vector<MatrixSection>& sections) {
         numSections = sections.size();
+        h_sectionInfo = sections; // Store original sections
+        
+        // Calculate dimensions for each section
+        for (int i = 0; i < numSections; i++) {
+            h_sectionInfo[i].rows = sections[i].bottom - sections[i].top + 1;
+            h_sectionInfo[i].cols = sections[i].right - sections[i].left + 1;
+        }
         
         // Allocate device memory for section pointers and info
         cudaMalloc(&d_sections, numSections * sizeof(int*));
         cudaMalloc(&d_sectionInfo, numSections * sizeof(MatrixSection));
         
-        // Copy section info to device
-        std::vector<MatrixSection> h_sectionInfo = sections;
+        // Allocate device memory for each section and update host info
+        std::vector<int*> h_sectionPtrs(numSections);
         for (int i = 0; i < numSections; i++) {
-            h_sectionInfo[i].rows = sections[i].bottom - sections[i].top;
-            h_sectionInfo[i].cols = sections[i].right - sections[i].left;
-            
-            // Allocate device memory for each section
             size_t sectionSize = h_sectionInfo[i].rows * h_sectionInfo[i].cols * sizeof(int);
             cudaMalloc(&h_sectionInfo[i].d_data, sectionSize);
+            h_sectionPtrs[i] = h_sectionInfo[i].d_data;
         }
         
-        cudaMemcpy(d_sectionInfo, h_sectionInfo.data(), 
+        // Copy section info to device (without the d_data pointers)
+        std::vector<MatrixSection> sectionInfoNoPointers = h_sectionInfo;
+        cudaMemcpy(d_sectionInfo, sectionInfoNoPointers.data(), 
                   numSections * sizeof(MatrixSection), cudaMemcpyHostToDevice);
         
         // Copy section pointers array
-        std::vector<int*> h_sectionPtrs(numSections);
-        for (int i = 0; i < numSections; i++) {
-            h_sectionPtrs[i] = h_sectionInfo[i].d_data;
-        }
         cudaMemcpy(d_sections, h_sectionPtrs.data(), 
                   numSections * sizeof(int*), cudaMemcpyHostToDevice);
     }
     
     ~MatrixSectionProcessor() {
-        // Free section device memory
-        std::vector<MatrixSection> h_sectionInfo(numSections);
-        cudaMemcpy(h_sectionInfo.data(), d_sectionInfo, 
-                  numSections * sizeof(MatrixSection), cudaMemcpyDeviceToHost);
-        
+        // Free section device memory using host info
         for (int i = 0; i < numSections; i++) {
             cudaFree(h_sectionInfo[i].d_data);
         }
-        
         cudaFree(d_sections);
         cudaFree(d_sectionInfo);
     }
@@ -76,46 +71,43 @@ public:
     void processSections(int* d_source, int sourceRows, int sourceCols, 
                         int* d_results = nullptr) {
         // 1. Copy sections from source matrix
-        dim3 blockDim(16, 16, 1);
-        dim3 gridDim(1, 1, numSections);
-        
-        for (int i = 0; i < numSections; i++) {
-            MatrixSection info;
-            cudaMemcpy(&info, &d_sectionInfo[i], sizeof(MatrixSection), cudaMemcpyDeviceToHost);
-            
-            gridDim.x = (info.cols + blockDim.x - 1) / blockDim.x;
-            gridDim.y = (info.rows + blockDim.y - 1) / blockDim.y;
-            
-            copySectionsKernel<<<gridDim, blockDim>>>(
-                d_source, sourceRows, sourceCols, d_sections, d_sectionInfo, numSections);
-        }
+        copySectionsKernel<<<1, 1>>>(d_source, sourceRows, sourceCols, 
+                                    d_sections, d_sectionInfo, numSections);
         cudaDeviceSynchronize();
         
-        // 2. Process sections
-        for (int i = 0; i < numSections; i++) {
-            MatrixSection info;
-            cudaMemcpy(&info, &d_sectionInfo[i], sizeof(MatrixSection), cudaMemcpyDeviceToHost);
-            
-            gridDim.x = (info.cols + blockDim.x - 1) / blockDim.x;
-            gridDim.y = (info.rows + blockDim.y - 1) / blockDim.y;
-            
-            processSectionsKernel<<<gridDim, blockDim>>>(
-                d_sections, d_sectionInfo, numSections, d_results);
-        }
+        // 2. Process sections  
+        processSectionsKernel<<<1, 1>>>(d_sections, d_sectionInfo, numSections, d_results);
         cudaDeviceSynchronize();
+    }
+    
+    void printSections() {
+        std::vector<int*> h_sectionData(numSections);
         
-        // 3. Copy processed sections back to source (optional)
+        // Copy section data from device to host
         for (int i = 0; i < numSections; i++) {
-            MatrixSection info;
-            cudaMemcpy(&info, &d_sectionInfo[i], sizeof(MatrixSection), cudaMemcpyDeviceToHost);
+            size_t sectionSize = h_sectionInfo[i].rows * h_sectionInfo[i].cols * sizeof(int);
+            h_sectionData[i] = new int[h_sectionInfo[i].rows * h_sectionInfo[i].cols];
             
-            gridDim.x = (info.cols + blockDim.x - 1) / blockDim.x;
-            gridDim.y = (info.rows + blockDim.y - 1) / blockDim.y;
+            cudaMemcpy(h_sectionData[i], h_sectionInfo[i].d_data, sectionSize, 
+                      cudaMemcpyDeviceToHost);
             
-            copyBackSectionsKernel<<<gridDim, blockDim>>>(
-                d_source, sourceRows, sourceCols, d_sections, d_sectionInfo, numSections);
+            std::cout << "\nSection " << i + 1 << " (" 
+                      << h_sectionInfo[i].top << "," << h_sectionInfo[i].left << ") to ("
+                      << h_sectionInfo[i].bottom << "," << h_sectionInfo[i].right << "): "
+                      << h_sectionInfo[i].rows << "x" << h_sectionInfo[i].cols << std::endl;
+            
+            for (int row = 0; row < h_sectionInfo[i].rows; row++) {
+                for (int col = 0; col < h_sectionInfo[i].cols; col++) {
+                    std::cout << h_sectionData[i][row * h_sectionInfo[i].cols + col] << " ";
+                }
+                std::cout << std::endl;
+            }
         }
-        cudaDeviceSynchronize();
+        
+        // Clean up
+        for (int i = 0; i < numSections; i++) {
+            delete[] h_sectionData[i];
+        }
     }
 };
 

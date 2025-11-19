@@ -83,15 +83,9 @@ int main() {
     
     DazeRouter dazeRouter;
     vector<pair<int, int>> cpuresD;
-    auto cputimeD = dazeRouter.route(cost, N, pins, cpuresD);
+    auto cputimeD = dazeRouter.route(costD, N, pins, cpuresD);
     assert(checkAllPinsOnPath(cpuresD, pins));
     cout << "Original CPU version:\n" <<  "    time: " << cputime.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpures, cost, N) << endl;
-    cout << "Final path" << endl;
-    for(auto &loc : cpuresD)
-    {
-        cout << "(" << loc.first << "," << loc.second << ")";
-    }
-    cout << endl;
     cout << "Current CPU version:\n" <<  "    time: " << cputimeD.first * 1.0 / CLOCKS_PER_SEC << "s\n    cost: " << evaluate(cpuresD, costD, N) << endl;
 
     return 0;

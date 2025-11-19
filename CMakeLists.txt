@@ -19,7 +19,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # add an include directory
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-add_executable(biPart biPart.cu)
+add_executable(loadTestCases loadTestCases.cpp ./source/util.cpp)
 
 include(CTest)
 add_subdirectory(test)
