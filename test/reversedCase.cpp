@@ -82,10 +82,10 @@ int main() {
     cout << endl;
     cout << "Cost is " << evaluate(cpures, h_matrix, N);
     cout << endl;
-    
+    TimeProfile t;
     DazeRouter dazeRouter;
     vector<pair<int, int>> dres;
-    auto dTime = dazeRouter.route(h_matrix, N, pins, dres);
+    auto dTime = dazeRouter.route(h_matrix, N, pins, dres, &t);
     // Print the final cost and the path selected
     cout << "The final cost is " << evaluate(dres, h_matrix, N) << ". " << endl;
     cout << "The final path is " << endl;

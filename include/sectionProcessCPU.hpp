@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <climits>
+#include <cstddef>
+#include <ctime>
 #include <iostream>
 #include <type_traits>
 #include <utility>
@@ -12,6 +14,24 @@
 #include "util.hpp"
 
 using namespace std;
+
+struct TimeProfile {
+    clock_t preProcess;
+    clock_t findMinPath;
+    clock_t reConnect;
+    clock_t secProcessTime;
+    clock_t selectPTime;
+    void printDetailTime()
+    {
+        cout << "Current detailed time information: " << endl;
+        cout << "   Preprocess time " << preProcess * 1.0 / CLOCKS_PER_SEC << endl;
+        cout << "   FindMinPath time " << findMinPath * 1.0 / CLOCKS_PER_SEC << endl;
+        cout << "   Reconnect time " << reConnect * 1.0 / CLOCKS_PER_SEC << endl;
+        cout << "   == In finding path ==" << endl;
+        cout << "   Section process time " << secProcessTime * 1.0 / CLOCKS_PER_SEC << endl;
+        cout << "   Select path time "  << selectPTime * 1.0 / CLOCKS_PER_SEC << endl;
+    }
+};
 
 class MatrixSectionProcessorCPU {
 public:
@@ -381,14 +401,14 @@ private:
 
 class DazeRouter {
     public:
-        pair<int, int> route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res);
+        pair<int, int> route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res, TimeProfile* tp = nullptr);
     
     protected:
-        bool calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo);
+        bool calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo, TimeProfile *tp);
         void swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N);
         void preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N);
         void getOriginalMatrix(const pair<int, int>& source, const vector<vector<int>> h_matrix, const int N);
-        PathInfo findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins);
+        PathInfo findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins, TimeProfile *p);
         void updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip, int N);
         void cleanUpPath(vector<pair<int, int>> &res, const vector<PathInfo> &allPathInfo);
         bool calMinPathCost(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>>& cost, int N, int& c, vector<pair<int, int>>& p);
@@ -398,7 +418,7 @@ class DazeRouter {
         std::vector<MatrixSection> sections;
 };
 
-inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res)
+inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res, TimeProfile* tp)
 {
     vector<pair<int,int>> unCFinalPins;
     auto clocks = clock();
@@ -407,14 +427,19 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
     vector<PathInfo> allPathInfo;
     unCFinalPins.clear();
     allPathInfo.clear();
+    tp->preProcess = 0;
+    tp->findMinPath = 0;
+    tp->reConnect = 0;
+    tp->secProcessTime = 0;
+    tp->selectPTime = 0;
     for(auto i = 1; i < pins.size(); i++)
     {
-        calBetweenTwoPins(pins[i-1], pins[i], cost, N, allPathInfo);
+        calBetweenTwoPins(pins[i-1], pins[i], cost, N, allPathInfo, tp);
     }
     //Since we do not encode connected attribute on the location, so we need an extra filtering on duplicated locations.
     cleanUpPath(res, allPathInfo);
     collectAllPinsOnPath(res, pins, unCFinalPins);
-    
+    auto reCT = clock();
     if(unCFinalPins.size() != 0)
     {
         for(auto &unPin : unCFinalPins)
@@ -448,9 +473,7 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
         collectAllPinsOnPath(res, pins, unCFinalPins);
         assert(unCFinalPins.size() == 0);
     }
-    
-    
-    
+    tp->reConnect = clock() - reCT;
     computeClocks = clock() - computeClocks;
     clocks = clock() - clocks;
     return make_pair(clocks, computeClocks);
@@ -548,46 +571,51 @@ inline bool DazeRouter::calMinPathCost(const pair<int, int>& pinFirst, const pai
     return true;
 }
 
-inline bool DazeRouter::calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo)
+inline bool DazeRouter::calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo, TimeProfile * tp)
 {
-       cout << "+++++++++Working on (" << pinFirst.first << "," << pinFirst.second << ")(" <<pinSecond.first << "," << pinSecond.second<<")+++++++++" << endl;
-        pair<int, int> pinLU;
-        pair<int, int> pinLR;
-        bool needFlip = false;
-        
-        pair<int, int> pinLUSwap;
-        pair<int, int> pinLRSwap;
-        if(pinFirst.first > pinSecond.first)
-        {
-            pinLUSwap = pinSecond;
-            pinLRSwap = pinFirst;
-        }
-        else {
-            pinLUSwap = pinFirst;
-            pinLRSwap = pinSecond;
-        }
-        
-        if(pinLRSwap.first >= pinLUSwap.first && pinLRSwap.second <= pinLUSwap.second)
-        {
-            cout << "Flipped" << endl;
-            needFlip = true;
-        }
-        vector<vector<int>> costSwapOnCondition(N, vector<int> (N));
-        squareN = abs(pinLRSwap.first - pinLUSwap.first) + 1 > abs(pinLRSwap.second - pinLUSwap.second) + 1 ? abs(pinLRSwap.first - pinLUSwap.first) + 1 : abs(pinLRSwap.second - pinLUSwap.second) + 1;
-        cout << "SquareN is " << squareN << endl;
-        swapOnCondition(pinLU, pinLR, costSwapOnCondition, pinLUSwap, pinLRSwap, cost, N);
-        cout << "Left upper (" << pinLU.first << "," << pinLU.second << ") (" <<  pinLR.first << "," << pinLR.second << ")" <<endl;
-        preProcess(pinLU, pinLR, costSwapOnCondition, N);
-        //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
-        vector<pair<int, int>> uncPins = {};
-        PathInfo p = findMinCostPath(pinLU, pinLR, uncPins);
-        if(p.cost == INF)
-        {
-            return false;
-        }
-        updateRealPathMap(p, pinLU, squareN, needFlip, N);
-        allPathInfo.push_back(p);
-        return true;
+    auto preT =clock();
+    cout << "+++++++++Working on (" << pinFirst.first << "," << pinFirst.second << ")(" <<pinSecond.first << "," << pinSecond.second<<")+++++++++" << endl;
+    pair<int, int> pinLU;
+    pair<int, int> pinLR;
+    bool needFlip = false;
+    
+    pair<int, int> pinLUSwap;
+    pair<int, int> pinLRSwap;
+    if(pinFirst.first > pinSecond.first)
+    {
+        pinLUSwap = pinSecond;
+        pinLRSwap = pinFirst;
+    }
+    else {
+        pinLUSwap = pinFirst;
+        pinLRSwap = pinSecond;
+    }
+    
+    if(pinLRSwap.first >= pinLUSwap.first && pinLRSwap.second <= pinLUSwap.second)
+    {
+        cout << "Flipped" << endl;
+        needFlip = true;
+    }
+    vector<vector<int>> costSwapOnCondition(N, vector<int> (N));
+    squareN = abs(pinLRSwap.first - pinLUSwap.first) + 1 > abs(pinLRSwap.second - pinLUSwap.second) + 1 ? abs(pinLRSwap.first - pinLUSwap.first) + 1 : abs(pinLRSwap.second - pinLUSwap.second) + 1;
+    cout << "SquareN is " << squareN << endl;
+    swapOnCondition(pinLU, pinLR, costSwapOnCondition, pinLUSwap, pinLRSwap, cost, N);
+    cout << "Left upper (" << pinLU.first << "," << pinLU.second << ") (" <<  pinLR.first << "," << pinLR.second << ")" <<endl;
+    preProcess(pinLU, pinLR, costSwapOnCondition, N);
+    //Update time profile
+    tp->preProcess += clock() - preT;
+    auto findMinPathT = clock();
+    //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
+    vector<pair<int, int>> uncPins = {};
+    PathInfo p = findMinCostPath(pinLU, pinLR, uncPins, tp);
+    tp->findMinPath += clock() - findMinPathT;
+    if(p.cost == INF)
+    {
+        return false;
+    }
+    updateRealPathMap(p, pinLU, squareN, needFlip, N);
+    allPathInfo.push_back(p);
+    return true;
 }
 
 inline void DazeRouter::swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N)
@@ -723,13 +751,17 @@ inline void DazeRouter::preProcess(const pair<int, int> &source, const pair<int,
     getOriginalMatrix(source, h_matrix, N);
 }
 
-inline PathInfo DazeRouter::findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins)
+inline PathInfo DazeRouter::findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins, TimeProfile *p)
 {
+    auto secPT = clock();
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
     auto sinkCur = make_pair(sink.first - source.first, sink.second - source.second);
     auto sourceCur = make_pair(0, 0);
     processor.getMinCostAndPathOnSections(originalMatrix, sourceCur, sinkCur);
+    p->secProcessTime += clock() - secPT;
+    auto selectPT = clock();
     PathInfo info = processor.selectFromMinCostAndPath(sections, originalMatrix, sourceCur, sinkCur, uncPins);
+    p->selectPTime += clock() - selectPT;
     return info;
 }
 
