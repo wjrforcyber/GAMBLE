@@ -94,10 +94,11 @@ int main() {
     std::cout << std::endl;
     
     // Process sections on CPU
+    TimeProfile t;
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
     pair<int, int> rSource = make_pair(0, 0);
     pair<int, int> rSink = make_pair(4, 4);
-    processor.getMinCostAndPathOnSections(originalMatrix, rSource, rSink);
+    processor.getMinCostAndPathOnSections(originalMatrix, rSource, rSink, &t);
     
     // Calculate each pair of the path and find the optimum one
     vector<pair<int, int>> uncPins = {};

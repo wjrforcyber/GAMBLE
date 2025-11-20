@@ -35,11 +35,12 @@ int main() {
             originalMatrix[i][j] = h_matrix[i * N + j];
         }
     }
+    TimeProfile t;
     // Process sections on CPU
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
     pair<int, int> rSource = make_pair(0, 0);
     pair<int, int> rSink = make_pair(1, 3);
-    processor.getMinCostAndPathOnSections(originalMatrix, rSource, rSink );
+    processor.getMinCostAndPathOnSections(originalMatrix, rSource, rSink, &t );
     
     // Evaluate unconnected pins from 4 direction
     vector<pair<int, int>> uncPins = {{3,2}};

@@ -21,6 +21,8 @@ struct TimeProfile {
     clock_t reConnect;
     clock_t secProcessTime;
     clock_t selectPTime;
+    clock_t shortPathWithCostTime;
+    clock_t shortRealEvlPathWithCostTime;
     void printDetailTime()
     {
         cout << "Current detailed time information: " << endl;
@@ -30,6 +32,20 @@ struct TimeProfile {
         cout << "   == In finding path ==" << endl;
         cout << "   Section process time " << secProcessTime * 1.0 / CLOCKS_PER_SEC << endl;
         cout << "   Select path time "  << selectPTime * 1.0 / CLOCKS_PER_SEC << endl;
+        cout << "   == In process ==" << endl;
+        cout << "   Cal short path with cost time " << shortPathWithCostTime * 1.0 / CLOCKS_PER_SEC << endl;
+        cout << "   Eval real path with cost time "  << shortRealEvlPathWithCostTime * 1.0 / CLOCKS_PER_SEC << endl;
+        
+    }
+    void reset()
+    {
+        preProcess = 0;
+        findMinPath = 0;
+        reConnect = 0;
+        secProcessTime = 0;
+        selectPTime = 0;
+        shortPathWithCostTime = 0;
+        shortRealEvlPathWithCostTime = 0;
     }
 };
 
@@ -52,7 +68,7 @@ public:
     }
     
     //show all sections
-    void getMinCostAndPathOnSections(vector<vector<int>>& originalMatrix, pair<int, int> realSource, pair<int, int> realSink) {
+    void getMinCostAndPathOnSections(vector<vector<int>>& originalMatrix, pair<int, int> realSource, pair<int, int> realSink, TimeProfile *p) {
         for (int i = 0; i < numSections; i++) {
             cout << "Section " << i << " (" << sections[i].rows << "x" << sections[i].cols << "):" << endl;
             for (int r = 0; r < sections[i].rows; r++) {
@@ -61,8 +77,10 @@ public:
                 }
                 cout << endl;
             }
+            auto sPathWithCostT = clock();
             //also show the shortest path sum with turn cost
             auto [minCost, path, isLocVia] = sections[i].shortestPathSumWithTurnCost();
+            p->shortPathWithCostTime += clock() - sPathWithCostT;
             cout << "Original Path Sum with Turn Cost: " << minCost << endl;
             //show the path
             cout << "Path: ";
@@ -70,7 +88,9 @@ public:
                 cout << "(" << r << "," << c << ") ";
             }
             cout << endl;
+            auto sRealEvlPathWithCostT = clock();
             auto [minCostUpdate, pathUpdate, isLocViaUpdate] = realValCheck(originalMatrix, realSink, path, isLocVia);
+            p->shortRealEvlPathWithCostTime += clock() - sRealEvlPathWithCostT;
 
             cout << "Shortest Path Sum with Turn Cost: " << minCostUpdate << endl;
             //show the path
@@ -427,11 +447,7 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
     vector<PathInfo> allPathInfo;
     unCFinalPins.clear();
     allPathInfo.clear();
-    tp->preProcess = 0;
-    tp->findMinPath = 0;
-    tp->reConnect = 0;
-    tp->secProcessTime = 0;
-    tp->selectPTime = 0;
+    tp->reset();
     for(auto i = 1; i < pins.size(); i++)
     {
         calBetweenTwoPins(pins[i-1], pins[i], cost, N, allPathInfo, tp);
@@ -757,7 +773,7 @@ inline PathInfo DazeRouter::findMinCostPath(const pair<int, int> &source, const 
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
     auto sinkCur = make_pair(sink.first - source.first, sink.second - source.second);
     auto sourceCur = make_pair(0, 0);
-    processor.getMinCostAndPathOnSections(originalMatrix, sourceCur, sinkCur);
+    processor.getMinCostAndPathOnSections(originalMatrix, sourceCur, sinkCur, p);
     p->secProcessTime += clock() - secPT;
     auto selectPT = clock();
     PathInfo info = processor.selectFromMinCostAndPath(sections, originalMatrix, sourceCur, sinkCur, uncPins);

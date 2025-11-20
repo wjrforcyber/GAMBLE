@@ -49,7 +49,8 @@ int main() {
         }
     }
     // Process sections on CPU
+    TimeProfile t;
     MatrixSectionProcessorCPU processor(originalMatrix, sections);
-    processor.getMinCostAndPathOnSections(originalMatrix, make_pair(0, 0), make_pair(1, 3));
+    processor.getMinCostAndPathOnSections(originalMatrix, make_pair(0, 0), make_pair(1, 3), &t);
     return 0;
 }
