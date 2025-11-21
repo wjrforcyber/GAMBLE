@@ -11,6 +11,7 @@ struct Matrix
     //saved for other features
 };
 struct MatrixSection;
+void sortByDistance(std::vector<std::pair<int, int>>& v, const std::pair<int, int>& p);
 vector<pair<int, int>> getSecDiagMatrixIndices(pair<int, int> LU, const int& squareN);
 void createSectionsOnSecDiag(const vector<pair<int, int>>& indices, vector<MatrixSection>& sections, pair<int, int> LU, pair<int, int> BR);
 vector<Matrix> partLargeM(const vector<vector<int>>& inM, const int nWin);

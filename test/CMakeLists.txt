@@ -49,5 +49,8 @@ add_test(NAME iterAllMatrixPins COMMAND iterAllPins)
 add_executable(test10Condition test10Condition.cpp ../source/util.cpp)
 add_test(NAME ltestMatrix10Condition COMMAND test10Condition)
 
+add_executable(loadTestCasesCPU loadTestCases.cpp ../source/util.cpp)
+add_test(NAME loadMatrixTestCasesCPU COMMAND loadTestCasesCPU)
+
 add_executable(sectionOutRoute sectionOutRoute.cu ../sectionProcessGPU.cu ../source/util.cpp)
 add_test(NAME sectionMatrixOutRoute COMMAND sectionOutRoute)

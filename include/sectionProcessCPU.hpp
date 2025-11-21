@@ -417,9 +417,12 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
     
     if(unCFinalPins.size() != 0)
     {
-        for(auto &unPin : unCFinalPins)
+        for(const auto &unPin : unCFinalPins)
         {
-            for(auto &pin : pins)
+            // sort the pins based on distance relative to the current pin euclidean distance
+            auto tmpSort = pins;
+            sortByDistance(tmpSort, unPin);
+            for(auto &pin : tmpSort)
             {
                 if(find(unCFinalPins.begin(), unCFinalPins.end(), pin)!=unCFinalPins.end())
                 {
@@ -448,9 +451,6 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
         collectAllPinsOnPath(res, pins, unCFinalPins);
         assert(unCFinalPins.size() == 0);
     }
-    
-    
-    
     computeClocks = clock() - computeClocks;
     clocks = clock() - clocks;
     return make_pair(clocks, computeClocks);

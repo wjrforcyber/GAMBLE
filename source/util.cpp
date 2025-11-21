@@ -2,6 +2,31 @@
 #include <cassert>
 #include <utility>
 #include <vector>
+
+/*!
+  \brief Distance
+*/
+void sortByDistance(std::vector<std::pair<int, int>>& v, const std::pair<int, int>& p)
+{
+    
+    std::sort(v.begin(), v.end(), 
+        [&p](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+            
+            // Calculate distance from point a to reference point p
+            int dx1 = a.first - p.first;
+            int dy1 = a.second - p.second;
+            double distA = std::sqrt(dx1 * dx1 + dy1 * dy1);
+            
+            // Calculate distance from point b to reference point p
+            int dx2 = b.first - p.first;
+            int dy2 = b.second - p.second;
+            double distB = std::sqrt(dx2 * dx2 + dy2 * dy2);
+            
+            // Sort by ascending distance
+            return distA < distB;
+        });
+}
+
 /*!
   \brief Create second diag position.
 */
