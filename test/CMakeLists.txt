@@ -1,3 +1,5 @@
+set(TEST_CASES_DIR "${CMAKE_SOURCE_DIR}/cases")
+
 add_executable(thrustSum thrustSum.cu)
 add_test(NAME thrustSumMatrix COMMAND thrustSum)
 
@@ -47,10 +49,14 @@ add_executable(iterAllPins iterAllPins.cpp ../source/util.cpp)
 add_test(NAME iterAllMatrixPins COMMAND iterAllPins)
 
 add_executable(test10Condition test10Condition.cpp ../source/util.cpp)
-add_test(NAME ltestMatrix10Condition COMMAND test10Condition)
+add_test(NAME testMatrix10Condition COMMAND test10Condition)
 
 add_executable(loadTestCasesCPU loadTestCases.cpp ../source/util.cpp)
 add_test(NAME loadMatrixTestCasesCPU COMMAND loadTestCasesCPU)
+
+set_tests_properties(loadMatrixTestCasesCPU PROPERTIES
+    ENVIRONMENT "TEST_CASES_DIR=${TEST_CASES_DIR}"
+)
 
 add_executable(sectionOutRoute sectionOutRoute.cu ../sectionProcessGPU.cu ../source/util.cpp)
 add_test(NAME sectionMatrixOutRoute COMMAND sectionOutRoute)

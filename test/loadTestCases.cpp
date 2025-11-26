@@ -1,6 +1,7 @@
 #include "mazeRouter.hpp"
 #include "sectionProcessCPU.hpp"
 #include <iostream>
+#include <fstream>
 
 int N, NumBlks, NumPins;
 const int dx[] = {-1, 1, 0, 0};
@@ -50,6 +51,11 @@ int evaluate(const vector<pair<int, int>> &res, vector<vector<int>> cost, const 
 }
 
 int main() {
+    // Redirect cin from a file
+    const char* env_dir = std::getenv("TEST_CASES_DIR");
+    string envDir = env_dir;
+    std::ifstream in(envDir + "/case6.txt");
+    std::cin.rdbuf(in.rdbuf());
     
     //cout << "Number of grid cells (N x N): " << endl;
     cin >> N;

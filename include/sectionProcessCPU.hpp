@@ -548,46 +548,50 @@ inline bool DazeRouter::calMinPathCost(const pair<int, int>& pinFirst, const pai
     return true;
 }
 
+inline void pinNormalize(pair<int, int>& pinLUSwap, pair<int, int>& pinLRSwap, bool &needFlip, const pair<int, int>& pinFirst, const pair<int, int>& pinSecond)
+{
+    if(pinFirst.first > pinSecond.first)
+    {
+        pinLUSwap = pinSecond;
+        pinLRSwap = pinFirst;
+    }
+    else {
+        pinLUSwap = pinFirst;
+        pinLRSwap = pinSecond;
+    }
+    
+    if(pinLRSwap.first >= pinLUSwap.first && pinLRSwap.second <= pinLUSwap.second)
+    {
+        cout << "Flipped" << endl;
+        needFlip = true;
+    }
+}
+
 inline bool DazeRouter::calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo)
 {
-       cout << "+++++++++Working on (" << pinFirst.first << "," << pinFirst.second << ")(" <<pinSecond.first << "," << pinSecond.second<<")+++++++++" << endl;
-        pair<int, int> pinLU;
-        pair<int, int> pinLR;
-        bool needFlip = false;
-        
-        pair<int, int> pinLUSwap;
-        pair<int, int> pinLRSwap;
-        if(pinFirst.first > pinSecond.first)
-        {
-            pinLUSwap = pinSecond;
-            pinLRSwap = pinFirst;
-        }
-        else {
-            pinLUSwap = pinFirst;
-            pinLRSwap = pinSecond;
-        }
-        
-        if(pinLRSwap.first >= pinLUSwap.first && pinLRSwap.second <= pinLUSwap.second)
-        {
-            cout << "Flipped" << endl;
-            needFlip = true;
-        }
-        vector<vector<int>> costSwapOnCondition(N, vector<int> (N));
-        squareN = abs(pinLRSwap.first - pinLUSwap.first) + 1 > abs(pinLRSwap.second - pinLUSwap.second) + 1 ? abs(pinLRSwap.first - pinLUSwap.first) + 1 : abs(pinLRSwap.second - pinLUSwap.second) + 1;
-        cout << "SquareN is " << squareN << endl;
-        swapOnCondition(pinLU, pinLR, costSwapOnCondition, pinLUSwap, pinLRSwap, cost, N);
-        cout << "Left upper (" << pinLU.first << "," << pinLU.second << ") (" <<  pinLR.first << "," << pinLR.second << ")" <<endl;
-        preProcess(pinLU, pinLR, costSwapOnCondition, N);
-        //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
-        vector<pair<int, int>> uncPins = {};
-        PathInfo p = findMinCostPath(pinLU, pinLR, uncPins);
-        if(p.cost == INF)
-        {
-            return false;
-        }
-        updateRealPathMap(p, pinLU, squareN, needFlip, N);
-        allPathInfo.push_back(p);
-        return true;
+    cout << "+++++++++Working on (" << pinFirst.first << "," << pinFirst.second << ")(" <<pinSecond.first << "," << pinSecond.second<<")+++++++++" << endl;
+    pair<int, int> pinLU;
+    pair<int, int> pinLR;
+    bool needFlip = false;
+    pair<int, int> pinLUSwap;
+    pair<int, int> pinLRSwap;
+    pinNormalize(pinLUSwap, pinLRSwap, needFlip, pinFirst, pinSecond);
+    vector<vector<int>> costSwapOnCondition(N, vector<int> (N));
+    squareN = abs(pinLRSwap.first - pinLUSwap.first) + 1 > abs(pinLRSwap.second - pinLUSwap.second) + 1 ? abs(pinLRSwap.first - pinLUSwap.first) + 1 : abs(pinLRSwap.second - pinLUSwap.second) + 1;
+    cout << "SquareN is " << squareN << endl;
+    swapOnCondition(pinLU, pinLR, costSwapOnCondition, pinLUSwap, pinLRSwap, cost, N);
+    cout << "Left upper (" << pinLU.first << "," << pinLU.second << ") (" <<  pinLR.first << "," << pinLR.second << ")" <<endl;
+    preProcess(pinLU, pinLR, costSwapOnCondition, N);
+    //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
+    vector<pair<int, int>> uncPins = {};
+    PathInfo p = findMinCostPath(pinLU, pinLR, uncPins);
+    if(p.cost == INF)
+    {
+        return false;
+    }
+    updateRealPathMap(p, pinLU, squareN, needFlip, N);
+    allPathInfo.push_back(p);
+    return true;
 }
 
 inline void DazeRouter::swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N)
@@ -596,11 +600,6 @@ inline void DazeRouter::swapOnCondition(pair<int, int>& pinLU, pair<int, int>& p
     if(pinUROri.first >= pinLUOri.first && pinUROri.second <= pinLUOri.second)
     {
         assert(pinLUOri.first < pinUROri.first);
-        //auto diff = abs(pinLUOri.second - pinUROri.second);
-        //pinLU.first = pinLUOri.first;
-        //pinLU.second = pinLUOri.second - diff;
-        //pinLR.first = pinUROri.first;
-        //pinLR.second = pinUROri.second + diff;
         pinLU.first = pinLUOri.first;
         pinLU.second = N - 1 - pinLUOri.second;
         pinLR.first = pinUROri.first;
