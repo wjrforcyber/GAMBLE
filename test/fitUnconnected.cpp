@@ -120,6 +120,7 @@ int main() {
     for (auto [r, c] : info.path) {
         cout << "(" << r << "," << c << ") ";
     }
+    assert(checkAllPinsOnPath(info.path, {rSource, sink, uncPins[0]}));
     std::cout << std::endl;
     std::cout << std::endl;
     

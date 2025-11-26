@@ -1,6 +1,7 @@
 #ifndef PATH_INFO_CPU_HPP
 #define PATH_INFO_CPU_HPP
 
+#include <cmath>
 #include <vector>
 #include <iostream>
 #include <map>
@@ -99,7 +100,7 @@ struct PathInfo {
         int iDir = 0;
         bool iFound = false;
         // It should be 100% sure that you could find the path to the original path according to the predefined scene
-        //while(std::find(path.begin(), path.end(), extenUncDir[iDir]) == path.end())
+        int iBreaker = 0;
         while(true)
         {
             for( iDir = 0; iDir < 4; iDir++)
@@ -125,7 +126,20 @@ struct PathInfo {
             {
                 break;
             }
-            if(iDir == 4)
+            int tmpCount = 0;
+            for(const auto& p: extenUncDir)
+            {
+                if(p.first == 0 || p.first == originalMatrix.size() || p.second == 0 || p.second == originalMatrix.size())
+                {
+                    tmpCount++;
+                }
+            }
+            if(tmpCount == 4)
+            {
+                break;
+            }
+            iBreaker++;
+            if(iBreaker == pow(originalMatrix.size(), 4))
             {
                 break;
             }
@@ -183,6 +197,7 @@ struct PathInfo {
     }
     void updateUncPins(std::vector<std::vector<int>>& originalMatrix, const vector<pair<int, int>>& uncPins)
     {
+        cout << "Connecting unconected..." << endl;
         for(int i = 0 ;i < uncPins.size(); i++)
         {
             //if path has the pin, continue

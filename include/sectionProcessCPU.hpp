@@ -384,9 +384,9 @@ class DazeRouter {
         pair<int, int> route(const vector<vector<int>> &cost, const int N, const vector<pair<int, int>> &pins, vector<pair<int, int>> &res);
     
     protected:
-        bool calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo);
+        bool calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, set<pair<int, int>>& pinsSet, vector<PathInfo>& allPathInfo);
         void swapOnCondition(pair<int, int>& pinLU, pair<int, int>& pinLR, vector<vector<int>>& costSwapOnCondition, const pair<int, int>& pinLUOri, const pair<int, int>& pinUROri, const vector<vector<int>>& cost, const int N);
-        void preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N);
+        void preProcess(const pair<int, int> &source, const pair<int, int> &sink, set<pair<int, int>>& pinsSet, vector<pair<int,int>>& uncPins, const vector<vector<int>>& h_matrix, const int N);
         void getOriginalMatrix(const pair<int, int>& source, const vector<vector<int>> h_matrix, const int N);
         PathInfo findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins);
         void updateRealPathMap(PathInfo& p, const pair<int, int>& rSource, const int& squareN, const bool& needFlip, int N);
@@ -407,9 +407,15 @@ inline pair<int, int> DazeRouter::route(const vector<vector<int>> &cost, const i
     vector<PathInfo> allPathInfo;
     unCFinalPins.clear();
     allPathInfo.clear();
+    // Give a pin set of all the pins
+    set<pair<int, int>> pinsSet;
+    for(const auto& pin: pins)
+    {
+        pinsSet.insert(pin);
+    }
     for(auto i = 1; i < pins.size(); i++)
     {
-        calBetweenTwoPins(pins[i-1], pins[i], cost, N, allPathInfo);
+        calBetweenTwoPins(pins[i-1], pins[i], cost, N, pinsSet, allPathInfo);
     }
     //Since we do not encode connected attribute on the location, so we need an extra filtering on duplicated locations.
     cleanUpPath(res, allPathInfo);
@@ -567,7 +573,7 @@ inline void pinNormalize(pair<int, int>& pinLUSwap, pair<int, int>& pinLRSwap, b
     }
 }
 
-inline bool DazeRouter::calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, vector<PathInfo>& allPathInfo)
+inline bool DazeRouter::calBetweenTwoPins(const pair<int, int>& pinFirst, const pair<int, int>& pinSecond, const vector<vector<int>> &cost, const int N, set<pair<int, int>>& pinsSet, vector<PathInfo>& allPathInfo)
 {
     cout << "+++++++++Working on (" << pinFirst.first << "," << pinFirst.second << ")(" <<pinSecond.first << "," << pinSecond.second<<")+++++++++" << endl;
     pair<int, int> pinLU;
@@ -581,9 +587,9 @@ inline bool DazeRouter::calBetweenTwoPins(const pair<int, int>& pinFirst, const 
     cout << "SquareN is " << squareN << endl;
     swapOnCondition(pinLU, pinLR, costSwapOnCondition, pinLUSwap, pinLRSwap, cost, N);
     cout << "Left upper (" << pinLU.first << "," << pinLU.second << ") (" <<  pinLR.first << "," << pinLR.second << ")" <<endl;
-    preProcess(pinLU, pinLR, costSwapOnCondition, N);
-    //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
     vector<pair<int, int>> uncPins = {};
+    preProcess(pinLU, pinLR, pinsSet, uncPins, costSwapOnCondition, N);
+    //TODO @Jingren: Use special trival case: we iterate 2 nodes each time, we will iterate all, so no unconnected pins.
     PathInfo p = findMinCostPath(pinLU, pinLR, uncPins);
     if(p.cost == INF)
     {
@@ -714,12 +720,37 @@ inline void DazeRouter::getOriginalMatrix(const pair<int, int>& source, const ve
     cout << endl;
 }
 
-inline void DazeRouter::preProcess(const pair<int, int> &source, const pair<int, int> &sink, const vector<vector<int>>& h_matrix, const int N)
+inline void DazeRouter::preProcess(const pair<int, int> &source, const pair<int, int> &sink, set<pair<int, int>>& pinsSet, vector<pair<int,int>>& uncPins, const vector<vector<int>>& h_matrix, const int N)
 {
     sections.clear();
     const vector<pair<int, int>> indices = getSecDiagMatrixIndices(make_pair(0, 0), squareN);
     createSectionsOnSecDiag(indices, sections, make_pair(0, 0), make_pair(squareN - 1,  squareN - 1));
     getOriginalMatrix(source, h_matrix, N);
+
+    pair<int, int> p;
+    p = source;
+    assert(sink.first >= source.first && sink.second >= source.second);
+    while(p != sink)
+    {
+        if(p != source)
+        {
+            if(pinsSet.find(p) != pinsSet.end())
+            {
+                uncPins.push_back(p);
+            }
+        }
+        p.second++;
+        if(p.first == sink.first && p.second == sink.second)
+        {
+            break;
+        }
+        if(p.second == sink.second)
+        {
+            p.second = 0;
+            p.first++;
+        }
+    }
+    cout << uncPins.size() << " internal pins are collected as unconnected. " << endl;
 }
 
 inline PathInfo DazeRouter::findMinCostPath(const pair<int, int> &source, const pair<int, int> &sink, const vector<pair<int, int>> &uncPins)
