@@ -12,6 +12,15 @@ add_test(NAME normalizeMatrix COMMAND normalize)
 add_executable(sectionOnCUDA sectionOnCUDA.cu)
 add_test(NAME sectionMatrixOnCUDA COMMAND sectionOnCUDA)
 
+add_executable(sectionOnDiagCUDA sectionOnDiagCUDA.cu)
+add_test(NAME sectionMatrixOnDiagCUDA COMMAND sectionOnDiagCUDA)
+
+add_executable(sectionLargeNLowPins sectionLargeNLowPins.cu)
+add_test(NAME sectionMatrixLargeNLowPins COMMAND sectionLargeNLowPins)
+
+add_executable(sectionPathOnCUDA sectionPathOnCUDA.cu)
+add_test(NAME sectionMatrixPathOnCUDA COMMAND sectionPathOnCUDA)
+
 add_executable(sectionOutCPU sectionOutCPU.cpp)
 add_test(NAME sectionOutMatrixCPU COMMAND sectionOutCPU)
 
