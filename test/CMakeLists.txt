@@ -9,6 +9,9 @@ add_test(NAME normalizeMatrix COMMAND normalize)
 #add_executable(sectionOutGPU sectionOutGPU.cu ../sectionProcessGPU.cu)
 #add_test(NAME sectionOutMatrixGPU COMMAND sectionOutGPU)
 
+add_executable(sectionOnCUDA sectionOnCUDA.cu)
+add_test(NAME sectionMatrixOnCUDA COMMAND sectionOnCUDA)
+
 add_executable(sectionOutCPU sectionOutCPU.cpp)
 add_test(NAME sectionOutMatrixCPU COMMAND sectionOutCPU)
 
