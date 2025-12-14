@@ -368,7 +368,7 @@ void printPerformanceRow(int pins, int pairs, int valid_pairs, double avg_square
          << setw(15) << avg_square
          << setw(15) << cpu_time
          << setw(15) << gpu_time
-         << setw(15) << (speedup > 1.0 ? speedup : 1.0/speedup)
+         << setw(15) << speedup
          << setw(15) << winner
          << setw(15) << fixed << setprecision(1) << gpu_efficiency << "%" << endl;
 }
@@ -499,10 +499,10 @@ void analyzeBreakEvenPoint() {
         cout << setw(10) << pins
              << setw(15) << avg_cpu
              << setw(15) << avg_gpu
-             << setw(15) << (speedup > 1.0 ? speedup : 1.0/speedup);
+             << setw(15) << speedup;
         
         if (speedup > 1.0) {
-            cout << setw(20) << "GPU FASTER ✓" << endl;
+            cout << setw(20) << "GPU FASTER" << endl;
             cout << "\n✓ Break-even point found at ~" << pins << " pins" << endl;
             break;
         } else {
