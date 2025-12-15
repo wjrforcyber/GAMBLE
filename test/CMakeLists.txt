@@ -31,9 +31,6 @@ add_test(NAME sectionMatrixPathDCUDA COMMAND sectionPathDCUDA)
 add_executable(sectionPathDObstaclesCUDA sectionPathDObstaclesCUDA.cu)
 add_test(NAME sectionMatrixPathDObstaclesCUDA COMMAND sectionPathDObstaclesCUDA)
 
-add_executable(sectionPathDWrapCUDA sectionPathDWrapCUDA.cu)
-add_test(NAME sectionMatrixPathDWrapCUDA COMMAND sectionPathDWrapCUDA)
-
 add_executable(sectionOutCPU sectionOutCPU.cpp)
 add_test(NAME sectionOutMatrixCPU COMMAND sectionOutCPU)
 
