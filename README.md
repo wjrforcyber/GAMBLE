@@ -9,8 +9,7 @@
 > This is an early stage and WIP case study of a course project related to maze route. So lots of problems/decisions are simplified. 
 
 > [!WARNING]
-> 🤡 Currently the performance is quite poor. I try to make it a GPU Accelerated Maze Route with BidirectionaL Expansion, but there are not too much CUDA integration, and I do need time to write concrete unit tests.
-> Even for the CPU version, the data processing section needs to be refactored. The time cost on partitioned process takes lots of time. If you are looking for a complete solution on GPU acceleration on maze route, recommend [GAMER: GPU-Accelerated Maze Routing](https://appsrv.cse.cuhk.edu.hk/~sjlin/GAMER%20TCAD2023.pdf).
+If you are looking for a complete solution on GPU acceleration on maze route, recommend [GAMER: GPU-Accelerated Maze Routing](https://appsrv.cse.cuhk.edu.hk/~sjlin/GAMER%20TCAD2023.pdf).
 
 
 ## Proposed notes
@@ -27,6 +26,45 @@ cd build
 to build the whole project. To run all test cases, type
 ```bash
 ctest --verbose --output-on-failure
+```
+
+## Experiment
+
+### Initial result
+For a random generated grid with no block section consideration, cost can be estimate quite fast in GPU version on a larger grid (as far as the test shows, `N = 50` is too small for GPU to show advantages), 
+
+on a 100 x 100 grid, the performance is shown as below:
+```bash
+8: ==========================================
+8: TEST: PERFORMANCE COMPARISON (PATH ONLY)
+8: ==========================================
+8: 
+8: Performance (Grid: 100x100)
+8: 
+8: ========================================================================================================================
+8:         Pins       Pairs     CPU Direct (ms)   CPU Diagonal (ms)   GPU Diagonal (ms)      Cost Calc (ms)
+8: ========================================================================================================================
+8:            5           9               17.40               20.13                5.38                0.01
+8:           10          19               38.81               37.94                0.94                0.02
+8:           20          39               69.02              105.04                5.96                0.05
+8:          100         199              379.28              510.16                1.22                0.23
+```
+
+on a 1000 x 1000 grid, the performance is shown as below:
+```bash
+8: ==========================================
+8: TEST: PERFORMANCE COMPARISON (PATH ONLY)
+8: ==========================================
+8: 
+8: Performance (Grid: 1000x1000)
+8: 
+8: ========================================================================================================================
+8:         Pins       Pairs     CPU Direct (ms)   CPU Diagonal (ms)   GPU Diagonal (ms)      Cost Calc (ms)
+8: ========================================================================================================================
+8:            5           9             1631.73             2287.10                7.84                0.10
+8:           10          19             3355.68             3963.80               11.13                0.21
+8:           20          39             6418.81             8414.77               13.86                0.42
+8:          100         199            36590.14            47270.34               11.75                2.30
 ```
 
 ## Contribute

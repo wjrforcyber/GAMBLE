@@ -21,6 +21,14 @@ add_test(NAME sectionMatrixLargeNLowPins COMMAND sectionLargeNLowPins)
 add_executable(sectionPathOnCUDA sectionPathOnCUDA.cu)
 add_test(NAME sectionMatrixPathOnCUDA COMMAND sectionPathOnCUDA)
 
+
+add_executable(sectionPathDNoPathCUDA sectionPathDNoPathCUDA.cu)
+add_test(NAME sectionMatrixPathDNoPathCUDA COMMAND sectionPathDNoPathCUDA)
+
+add_executable(sectionPathDCUDA sectionPathDCUDA.cu)
+add_test(NAME sectionMatrixPathDCUDA COMMAND sectionPathDCUDA)
+
+
 add_executable(sectionOutCPU sectionOutCPU.cpp)
 add_test(NAME sectionOutMatrixCPU COMMAND sectionOutCPU)
 
