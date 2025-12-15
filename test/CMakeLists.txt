@@ -79,6 +79,3 @@ add_test(NAME loadMatrixTestCasesCPU COMMAND loadTestCasesCPU)
 set_tests_properties(loadMatrixTestCasesCPU PROPERTIES
     ENVIRONMENT "TEST_CASES_DIR=${TEST_CASES_DIR}"
 )
-
-add_executable(sectionOutRoute sectionOutRoute.cu ../sectionProcessGPU.cu ../source/util.cpp)
-add_test(NAME sectionMatrixOutRoute COMMAND sectionOutRoute)
