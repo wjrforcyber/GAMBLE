@@ -1,6 +1,7 @@
 // Optimized GPU Dijkstra implementation
 
 #include <algorithm>
+#include <unordered_set>
 #include <vector>
 #include <iostream>
 #include <iomanip>
@@ -933,6 +934,57 @@ public:
     }
 };
 
+// ==================== PATH VALIDATION HELPER ====================
+class PathValidator {
+    public:
+        // Check if all positions are present on the path
+        static bool checkAllPositionsOnPath(
+            const vector<Point>& path,
+            const vector<pair<int, int>>& positions
+        ) {
+            if (path.empty() || positions.empty()) {
+                return false;
+            }
+            
+            cout << "Checking " << positions.size() << " positions against path of length " 
+                 << path.size() << "..." << endl;
+            
+            // Create a map for faster lookup of path points
+            unordered_set<string> path_points;
+            for (const auto& point : path) {
+                string key = to_string(point.x) + "," + to_string(point.y);
+                path_points.insert(key);
+            }
+            
+            bool all_found = true;
+            vector<bool> found(positions.size(), false);
+            
+            for (size_t i = 0; i < positions.size(); i++) {
+                string key = to_string(positions[i].first) + "," + to_string(positions[i].second);
+                
+                if (path_points.find(key) != path_points.end()) {
+                    found[i] = true;
+                    cout << "  ✓ Position " << i << " (" << positions[i].first << "," 
+                         << positions[i].second << ") FOUND" << endl;
+                } else {
+                    all_found = false;
+                    cout << "  ✗ Position " << i << " (" << positions[i].first << "," 
+                         << positions[i].second << ") MISSING" << endl;
+                }
+            }
+            
+            // Print summary
+            int found_count = count(found.begin(), found.end(), true);
+            cout << "Summary: " << found_count << "/" << positions.size() 
+                 << " positions found on path" << endl;
+            
+            return all_found;
+        }
+};
+
+
+
+
 // ==================== PATH PRINTING HELPER ====================
 void printPath(const vector<Point>& path, const string& label = "Path") {
     cout << label << " (" << path.size() << " points): ";
@@ -1218,6 +1270,66 @@ void testPathAccuracy() {
     cout << "CPU Direct has path: " << (cpu_direct_has_path ? "YES" : "NO") << endl;
     cout << "CPU Diagonal has path: " << (cpu_diag_has_path ? "YES" : "NO") << endl;
     cout << "GPU has path: " << (gpu_has_path ? "YES" : "NO") << endl;
+    
+    
+    
+    PathValidator validator;
+    // Test with multiple pins
+    vector<pair<int, int>> positions_valid = {
+        {0, 0}, 
+        {N-1, 0}, 
+        {N-1, N-1}, 
+        {0, N-1}, 
+        {N/2, N/2}
+    };
+    gpu_results = gpu_finder.findOptimalPathsGPUFast(positions_valid, grid, gpu_time);
+    // Combine all segments into one complete path
+    vector<Point> complete_path_gpu;
+    for (size_t i = 0; i < gpu_results.size(); i++) {
+        if (gpu_results[i].valid && !gpu_results[i].full_path.empty()) {
+            if (complete_path_gpu.empty()) {
+                complete_path_gpu = gpu_results[i].full_path;
+            } else {
+                // Remove the first point (duplicate with previous segment's last point)
+                complete_path_gpu.insert(
+                    complete_path_gpu.end(), 
+                    gpu_results[i].full_path.begin() + 1, 
+                    gpu_results[i].full_path.end()
+                );
+            }
+        }
+    }
+    
+    if (!complete_path_gpu.empty()) {
+        cout << "Complete GPU Path:" << endl;
+        cout << "  Segments: " << gpu_results.size() << endl;
+        cout << "  Combined path length: " << complete_path_gpu.size() << " points" << endl;
+        
+        // Calculate total cost
+        int total_cost_gpu = 0;
+        for (size_t i = 0; i < gpu_results.size(); i++) {
+            if (gpu_results[i].valid && !gpu_results[i].full_path.empty()) {
+                total_cost_gpu += cost_calculator.calculatePathCost(
+                    grid, gpu_results[i].full_path
+                );
+            }
+        }
+        cout << "  Total cost: " << total_cost_gpu << endl;
+        
+        // Validate the complete path
+        auto on_path = validator.checkAllPositionsOnPath(complete_path_gpu, positions_valid);
+        if(on_path)
+        {
+            cout << "All positions on path." << endl;
+        }
+        else {
+            cout << "Some positions are not on path." << endl;
+        }
+    } else {
+        cout << "  No valid path found!" << endl;
+    }
+    
+    
 }
 
 // ==================== MAIN ====================

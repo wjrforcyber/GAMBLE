@@ -31,7 +31,7 @@ ctest --verbose --output-on-failure
 ## Experiment
 
 ### Initial result
-For a random generated grid with no block section consideration, cost can be estimate quite fast in GPU version on a larger grid (as far as the test shows, `N = 50` is too small for GPU to show advantages), 
+For a random generated grid with no block section consideration, cost can be estimate quite fast in GPU version. 
 
 on a 100 x 100 grid, the performance is shown as below:
 ```bash
@@ -44,27 +44,11 @@ on a 100 x 100 grid, the performance is shown as below:
 8: ========================================================================================================================
 8:         Pins       Pairs     CPU Direct (ms)   CPU Diagonal (ms)   GPU Diagonal (ms)      Cost Calc (ms)
 8: ========================================================================================================================
-8:            5           9               17.40               20.13                5.38                0.01
-8:           10          19               38.81               37.94                0.94                0.02
-8:           20          39               69.02              105.04                5.96                0.05
-8:          100         199              379.28              510.16                1.22                0.23
-```
-
-on a 1000 x 1000 grid, the performance is shown as below:
-```bash
-8: ==========================================
-8: TEST: PERFORMANCE COMPARISON (PATH ONLY)
-8: ==========================================
-8: 
-8: Performance (Grid: 1000x1000)
-8: 
-8: ========================================================================================================================
-8:         Pins       Pairs     CPU Direct (ms)   CPU Diagonal (ms)   GPU Diagonal (ms)      Cost Calc (ms)
-8: ========================================================================================================================
-8:            5           9             1631.73             2287.10                7.84                0.10
-8:           10          19             3355.68             3963.80               11.13                0.21
-8:           20          39             6418.81             8414.77               13.86                0.42
-8:          100         199            36590.14            47270.34               11.75                2.30
+8:            5           9               20.59               24.09                0.22                0.02
+8:           10          19               46.39               45.24                0.24                0.04
+8:           20          39               84.69              125.41                0.40                0.08
+8:          100         199              413.26              524.11                1.10                0.32
+8:          500         999             1916.18             2536.89                4.58                1.60
 ```
 
 ## Contribute
