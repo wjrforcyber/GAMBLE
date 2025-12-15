@@ -27,29 +27,37 @@ to build the whole project. To run all test cases, type
 ```bash
 ctest --verbose --output-on-failure
 ```
+For direct case test, eg.
+```bash
+cd build
+./loadTestCases < ../cases/case13.txt
+```
 
 ## Experiment
 
 ### Initial result
-For a random generated grid with no block section consideration, cost can be estimate quite fast in GPU version. 
+Since path tracking is still using simple L shape, costs need to be upgraded.
 
-on a 100 x 100 grid, the performance is shown as below:
-```bash
-8: ==========================================
-8: TEST: PERFORMANCE COMPARISON (PATH ONLY)
-8: ==========================================
-8: 
-8: Performance (Grid: 100x100)
-8: 
-8: ========================================================================================================================
-8:         Pins       Pairs     CPU Direct (ms)   CPU Diagonal (ms)   GPU Diagonal (ms)      Cost Calc (ms)
-8: ========================================================================================================================
-8:            5           9               20.59               24.09                0.22                0.02
-8:           10          19               46.39               45.24                0.24                0.04
-8:           20          39               84.69              125.41                0.40                0.08
-8:          100         199              413.26              524.11                1.10                0.32
-8:          500         999             1916.18             2536.89                4.58                1.60
-```
+> [!WARNING]
+`case4` has some issue now.
+
+
+| Cases | CPU_time | CPU_cost | GPU_time | GPU_cost |
+| --- | --- | --- | --- | --- |
+| `case1.txt` | 5.8171s | 608800 | 0.013s | 1341898 |
+| `case2.txt` | 0.679213s | 193416 | 0.003s | 558751 |
+| `case3.txt` | 0.279113s | 135455 | 0.001s | 215182 |
+| `case4.txt` |  - | - | - | - | 
+| `case5.txt` | 0.013782s | 32296 | 0.000s | 53898 |
+| `case6.txt` | 0.002987s | 12972 | 0.000s | 27779 |
+| `case7.txt` | 8.54784s | 5022 | 0.011s | 17389 |
+| `case8.txt` | 0.822265s | 1969 | 0.003s | 6970 |
+| `case9.txt` | 0.392851s | 1550 | 0.001s | 5379 |
+| `case10.txt` | 0.081696s | 1019 | 0.000s | 2331 |
+| `case11.txt` | 0.010352s | 289 | 0.000s | 1257 |
+| `case12.txt` | 36.7125s | 13652 | 0.015s | 147692 |
+| `case13.txt` | 55.4788s | 17131 | 0.017s | 259705 |
+
 
 ## Contribute
 You are welcome to contribute and create issues related to the problem. I'll try my best to give solution in my free time.
