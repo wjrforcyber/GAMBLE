@@ -21,5 +21,9 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 add_executable(loadTestCases loadTestCases.cu ./source/util.cpp)
 
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/run_test.sh
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 include(CTest)
 add_subdirectory(test)

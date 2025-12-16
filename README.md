@@ -33,6 +33,16 @@ cd build
 ./loadTestCases < ../cases/case13.txt
 ```
 
+### Run bash for all 13 test cases
+There's a bash script in the source,  if you run cmake it will be automatically copied to `build` directory. 
+```bash
+cd build
+chmod +x run_test.sh
+./run_test.sh
+```
+will run all the actually test cases in `cases` folder.
+
+
 ## Experiment
 
 ### Initial result
