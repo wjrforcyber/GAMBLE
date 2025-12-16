@@ -1,5 +1,5 @@
 #include "include/mazeRouter.hpp"
-#include "include/util.hpp"
+//#include "include/util.hpp"
 #include <iostream>
 
 #include <algorithm>
@@ -338,6 +338,8 @@ __global__ void diagonalBridgingKernel(
     bool path1_found = true;
     int current_x = start_x;
     int current_y = start_y;
+    int indicates1 = -1; // 0 : HV, 1 : VH
+    int indicates2 = -1; // 0 : HV, 1 : VH
     
     // Move horizontally first
     int step_x = (diag_x > current_x) ? 1 : -1;
@@ -356,6 +358,10 @@ __global__ void diagonalBridgingKernel(
                 break;
             }
         }
+    }
+    if (path1_found == true)
+    {
+        indicates1 = 0;
     }
     
     // If horizontal-vertical failed, try vertical-horizontal
@@ -380,6 +386,10 @@ __global__ void diagonalBridgingKernel(
                     break;
                 }
             }
+        }
+        if (path1_found == true)
+        {
+            indicates1 = 1;
         }
     }
     
@@ -406,7 +416,10 @@ __global__ void diagonalBridgingKernel(
             }
         }
     }
-    
+    if(path2_found)
+    {
+        indicates2 = 0;
+    }
     // If horizontal-vertical failed, try vertical-horizontal
     if (!path2_found) {
         path2_found = true;
@@ -430,6 +443,10 @@ __global__ void diagonalBridgingKernel(
                 }
             }
         }
+        if(path2_found)
+        {
+            indicates2 = 1;
+        }
     }
     
     if (path1_found && path2_found) {
@@ -437,32 +454,69 @@ __global__ void diagonalBridgingKernel(
         // Calculate total cost
         int cost = 0;
         
-        // Cost from start to diagonal
-        current_x = start_x;
-        current_y = start_y;
-        step_x = (diag_x > current_x) ? 1 : -1;
-        for (int x = current_x; x != diag_x; x += step_x) {
-            cost += cost_grid[x * N + current_y];
+        // HV
+        if(indicates1 == 0)
+        {
+            // Cost from start to diagonal
+            current_x = start_x;
+            current_y = start_y;
+            step_x = (diag_x > current_x) ? 1 : -1;
+            for (int x = current_x; x != diag_x; x += step_x) {
+                cost += cost_grid[x * N + current_y];
+            }
+            current_x = diag_x;
+            int step_y = (diag_y > current_y) ? 1 : -1;
+            for (int y = current_y; y != diag_y; y += step_y) {
+                cost += cost_grid[current_x * N + y];
+            }
         }
-        current_x = diag_x;
-        int step_y = (diag_y > current_y) ? 1 : -1;
-        for (int y = current_y; y != diag_y; y += step_y) {
-            cost += cost_grid[current_x * N + y];
+        else if(indicates1 == 1)
+        {
+            // Cost from start to diagonal
+            current_x = start_x;
+            current_y = start_y;
+            int step_y = (diag_y > current_y) ? 1 : -1;
+            for (int y = current_y; y != diag_y; y += step_y) {
+                cost += cost_grid[current_x * N + y];
+            }
+            current_y = diag_y;
+            step_x = (diag_x > current_x) ? 1 : -1;
+            for (int x = current_x; x != diag_x; x += step_x) {
+                cost += cost_grid[x * N + current_y];
+            }
         }
-        
-        // Cost from diagonal to end
-        current_x = diag_x;
-        current_y = diag_y;
-        step_x = (end_x > current_x) ? 1 : -1;
-        for (int x = current_x; x != end_x; x += step_x) {
-            cost += cost_grid[x * N + current_y];
+        // HV
+        if(indicates2 == 0)
+        {
+            // Cost from diagonal to end
+            current_x = diag_x;
+            current_y = diag_y;
+            step_x = (end_x > current_x) ? 1 : -1;
+            for (int x = current_x; x != end_x; x += step_x) {
+                cost += cost_grid[x * N + current_y];
+            }
+            current_x = end_x;
+            int step_y = (end_y > current_y) ? 1 : -1;
+            for (int y = current_y; y != end_y; y += step_y) {
+                cost += cost_grid[current_x * N + y];
+            }
         }
-        current_x = end_x;
-        step_y = (end_y > current_y) ? 1 : -1;
-        for (int y = current_y; y != end_y; y += step_y) {
-            cost += cost_grid[current_x * N + y];
+        // VH
+        else if(indicates2 == 1)
+        {
+            // Cost from diagonal to end
+            current_x = diag_x;
+            current_y = diag_y;
+            int step_y = (end_y > current_y) ? 1 : -1;
+            for (int y = current_y; y != end_y; y += step_y) {
+                cost += cost_grid[current_x * N + y];
+            }
+            current_y = end_y;
+            step_x = (end_x > current_x) ? 1 : -1;
+            for (int x = current_x; x != end_x; x += step_x) {
+                cost += cost_grid[x * N + current_y];
+            }
         }
-        
         path_costs[pair_idx] = cost;
     } else {
         path_exists[pair_idx] = 0;
@@ -572,7 +626,12 @@ public:
             int n = max(dr, dc) + 1;
             
             // Try up to 5 diagonal points (to limit GPU workload)
-            int step = max(1, n / 5);
+            //int step = max(1, n / 5);
+            // Use adaptive step:
+            int step;
+            if (n < 10) step = 1;        // Small square: test all
+            else if (n < 20) step = 2;   // Medium: test half
+            else step = n / 5;          // Large: test 10%
             for (int j = 0; j < n; j += step) {
                 Point d_normalized = {
                     trans_info.normalized_source.x + j,
