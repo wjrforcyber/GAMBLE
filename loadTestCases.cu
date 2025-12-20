@@ -51,6 +51,14 @@ struct Point {
     bool operator!=(const Point& other) const {
         return !(*this == other);
     }
+    
+    // Add this operator overload:
+    bool operator<(const Point& other) const {
+        if (x != other.x) {
+            return x < other.x;
+        }
+        return y < other.y;
+    }
 };
 
 struct PathResult {
@@ -70,6 +78,31 @@ struct TransformationInfo {
     
     TransformationInfo() : flip_x(false), flip_y(false), swapped(false), case_type(0) {}
 };
+
+// Function to transform cost matrix based on transformation info
+vector<vector<int>> transformCostMatrix(const vector<vector<int>>& original_cost, 
+                                        const TransformationInfo& trans_info, int N) {
+    vector<vector<int>> transformed_cost(N, vector<int>(N));
+    
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            // Apply transformations in the same order as point transformation
+            int original_x = i;
+            int original_y = j;
+            
+            if (trans_info.flip_x) {
+                original_x = N - 1 - i;
+            }
+            if (trans_info.flip_y) {
+                original_y = N - 1 - j;
+            }
+            
+            transformed_cost[i][j] = original_cost[original_x][original_y];
+        }
+    }
+    
+    return transformed_cost;
+}
 
 // Normalize points to TL->BR case for diagonal bridging
 TransformationInfo normalizePoints(Point source, Point sink, int N) {
@@ -281,6 +314,64 @@ public:
         }
         
         return path;
+    }
+    
+    // Get shortest path with transformed coordinates
+    vector<Point> getShortestPathTransformed(const vector<vector<int>>& original_grid, 
+                                            Point start, Point end, 
+                                            const TransformationInfo& trans_info, int N) {
+        // Transform points to normalized coordinates
+        Point norm_start = trans_info.normalized_source;
+        Point norm_end = trans_info.normalized_sink;
+        
+        // Transform cost matrix
+        vector<vector<int>> transformed_grid = transformCostMatrix(original_grid, trans_info, N);
+        
+        // Get path in transformed coordinates
+        vector<Point> transformed_path = getShortestPath(transformed_grid, norm_start, norm_end, N);
+        
+        // Transform path back to original coordinates
+        vector<Point> original_path;
+        for (const auto& p : transformed_path) {
+            original_path.push_back(transformBack(p, trans_info, N));
+        }
+        
+        return original_path;
+    }
+    
+    // Function to calculate squared Euclidean distance (avoiding sqrt for efficiency)
+    long long squaredDistance(const pair<int, int>& p1, const pair<int, int>& p2) {
+        long long dx = p1.first - p2.first;
+        long long dy = p1.second - p2.second;
+        return dx * dx + dy * dy;
+    }
+    
+    Point findClosestLinear(const set<Point>& s,
+                                 int xSource, int ySource) {
+        if (s.empty()) {
+            throw runtime_error("Set is empty");
+        }
+        
+        pair<int, int> target = {xSource, ySource};
+        Point closestP = *s.begin();
+        const pair<int, int> c = {closestP.x, closestP.y};
+        long long minDist = squaredDistance(c, target);
+        
+        for (const auto& point : s) {
+            const pair<int, int> c = {point.x, point.y};
+            long long dist = squaredDistance(c, target);
+            if (dist < minDist) {
+                minDist = dist;
+                closestP = point;
+            }
+        }
+        return closestP;
+    }
+
+    vector<Point> considerExistingPath(const vector<vector<int>>& grid, Point start, int N, const set<Point>& existingP)
+    {
+        Point p = findClosestLinear(existingP, start.x, start.y);
+        return getShortestPath(grid, start, p, N);
     }
 };
 
@@ -605,10 +696,10 @@ public:
             // Get transformation info
             TransformationInfo trans_info = normalizePoints(source, sink, grid_size);
             
-            // Handle colinear and same point cases with CPU Dijkstra
+            // Handle colinear and same point cases with transformed Dijkstra
             if (trans_info.case_type == 5 || trans_info.case_type == 6) {
-                // Use CPU Dijkstra for these cases
-                vector<Point> path = cpu_dijkstra.getShortestPath(cost_grid, source, sink, grid_size);
+                // Use transformed Dijkstra for these cases
+                vector<Point> path = cpu_dijkstra.getShortestPathTransformed(cost_grid, source, sink, trans_info, grid_size);
                 int cost = 0;
                 for (const auto& p : path) {
                     cost += cost_grid[p.x][p.y];
@@ -625,31 +716,49 @@ public:
             int dc = trans_info.normalized_sink.y - trans_info.normalized_source.y;
             int n = max(dr, dc) + 1;
             
-            // Try up to 5 diagonal points (to limit GPU workload)
-            //int step = max(1, n / 5);
-            // Use adaptive step:
-            int step;
-            if (n < 10) step = 1;        // Small square: test all
-            else if (n < 20) step = 2;   // Medium: test half
-            else step = n / 5;          // Large: test 10%
+            // Try multiple diagonal points with adaptive step
+            //int step;
+            //if (n < 10) step = 1;        // Small square: test all
+            //else if (n < 20) step = 2;   // Medium: test half
+            //else step = n / 5;          // Large: test 10%
+            int step = 1;
+            
             for (int j = 0; j < n; j += step) {
-                Point d_normalized = {
+                // Create two diagonal points
+                Point d1_normalized = {
                     trans_info.normalized_source.x + j,
                     trans_info.normalized_source.y + (n - 1 - j) // Second diagonal
                 };
+                Point d2_normalized = {
+                    trans_info.normalized_source.x + (n - 1 - j),
+                    trans_info.normalized_source.y + j // First diagonal
+                };
                 
                 // Transform back to original coordinates
-                Point d_original = transformBack(d_normalized, trans_info, grid_size);
+                Point d1_original = transformBack(d1_normalized, trans_info, grid_size);
+                Point d2_original = transformBack(d2_normalized, trans_info, grid_size);
                 
                 // Clamp to grid
-                d_original = d_original.clamped(grid_size);
+                d1_original = d1_original.clamped(grid_size);
+                d2_original = d2_original.clamped(grid_size);
                 
+                // Add first diagonal point
                 sources_x.push_back(source.x);
                 sources_y.push_back(source.y);
                 dests_x.push_back(sink.x);
                 dests_y.push_back(sink.y);
-                diag_points_x.push_back(d_original.x);
-                diag_points_y.push_back(d_original.y);
+                diag_points_x.push_back(d1_original.x);
+                diag_points_y.push_back(d1_original.y);
+                pair_indices.push_back(i);
+                trans_infos.push_back(trans_info);
+                
+                // Add second diagonal point
+                sources_x.push_back(source.x);
+                sources_y.push_back(source.y);
+                dests_x.push_back(sink.x);
+                dests_y.push_back(sink.y);
+                diag_points_x.push_back(d2_original.x);
+                diag_points_y.push_back(d2_original.y);
                 pair_indices.push_back(i);
                 trans_infos.push_back(trans_info);
             }
@@ -719,28 +828,47 @@ public:
                         Point source = {positions[i].first, positions[i].second};
                         Point sink = {positions[i+1].first, positions[i+1].second};
                         
-                        // Create path: source -> diagonal -> sink
-                        vector<Point> path = createLShapedPath(source, best_diag, cost_grid);
-                        if (!path.empty()) {
+                        // Create path using transformed cost matrix
+                        TransformationInfo trans_info = normalizePoints(source, sink, grid_size);
+                        vector<vector<int>> transformed_cost = transformCostMatrix(cost_grid, trans_info, grid_size);
+                        
+                        // Get path in normalized coordinates
+                        Point norm_source = trans_info.normalized_source;
+                        Point norm_diag = {
+                            trans_info.flip_x ? (grid_size - 1 - best_diag.x) : best_diag.x,
+                            trans_info.flip_y ? (grid_size - 1 - best_diag.y) : best_diag.y
+                        };
+                        Point norm_sink = trans_info.normalized_sink;
+                        
+                        // Create L-shaped paths in normalized coordinates
+                        vector<Point> path_norm = createLShapedPathTransformed(norm_source, norm_diag, transformed_cost);
+                        if (!path_norm.empty()) {
                             // Remove the last point (diagonal) to avoid duplicate
-                            path.pop_back();
+                            path_norm.pop_back();
                             
                             // Add path from diagonal to sink
-                            vector<Point> path2 = createLShapedPath(best_diag, sink, cost_grid);
-                            if (!path2.empty()) {
-                                path.insert(path.end(), path2.begin(), path2.end());
+                            vector<Point> path2_norm = createLShapedPathTransformed(norm_diag, norm_sink, transformed_cost);
+                            if (!path2_norm.empty()) {
+                                path_norm.insert(path_norm.end(), path2_norm.begin(), path2_norm.end());
                             }
+                        }
+                        
+                        // Transform path back to original coordinates
+                        vector<Point> path;
+                        for (const auto& p_norm : path_norm) {
+                            path.push_back(transformBack(p_norm, trans_info, grid_size));
                         }
                         
                         results[i].full_path = path;
                         results[i].valid = !path.empty();
                         results[i].total_cost = calculatePathCost(cost_grid, path);
                     } else {
-                        // No valid diagonal path found, fallback to CPU Dijkstra
+                        // No valid diagonal path found, fallback to transformed Dijkstra
                         Point source = {positions[i].first, positions[i].second};
                         Point sink = {positions[i+1].first, positions[i+1].second};
+                        TransformationInfo trans_info = normalizePoints(source, sink, grid_size);
                         
-                        vector<Point> path = cpu_dijkstra.getShortestPath(cost_grid, source, sink, grid_size);
+                        vector<Point> path = cpu_dijkstra.getShortestPathTransformed(cost_grid, source, sink, trans_info, grid_size);
                         int cost = 0;
                         for (const auto& p : path) {
                             cost += cost_grid[p.x][p.y];
@@ -754,7 +882,73 @@ public:
             }
         }
         
-        // Handle any remaining pairs with CPU Dijkstra
+        // Handle remaining pairs by considering existing path
+        set<Point> existingP;
+        int inValidCount = 0;
+        for (int i = 0; i < num_points - 1; i++) {
+            if(results[i].valid)
+            {
+                for(auto p: results[i].full_path)
+                {
+                    existingP.insert(p);
+                }
+            }
+            else {
+                inValidCount++;
+            }
+        }
+        cout << "Invalid number is " << inValidCount << endl;
+        
+        for (int i = 0; i < num_points - 1; i++) {
+            if (!results[i].valid) {
+                Point source = {positions[i].first, positions[i].second};
+                Point sink = {positions[i+1].first, positions[i+1].second};
+                
+                vector<Point> pathS = cpu_dijkstra.considerExistingPath(cost_grid, source, grid_size, existingP);
+                vector<Point> pathE = cpu_dijkstra.considerExistingPath(cost_grid, sink, grid_size, existingP);
+                int cost = 0;
+                
+                // Merge paths, avoiding duplicates
+                set<Point> path_set;
+                vector<Point> merged_path;
+                
+                for (const auto& p : pathS) {
+                    if (path_set.find(p) == path_set.end()) {
+                        path_set.insert(p);
+                        merged_path.push_back(p);
+                        cost += cost_grid[p.x][p.y];
+                    }
+                }
+                
+                // Connect paths if they don't meet
+                if (!pathS.empty() && !pathE.empty() && pathS.back() != pathE.front()) {
+                    // Find connection path
+                    vector<Point> connect_path = cpu_dijkstra.getShortestPath(cost_grid, pathS.back(), pathE.front(), grid_size);
+                    for (const auto& p : connect_path) {
+                        if (path_set.find(p) == path_set.end()) {
+                            path_set.insert(p);
+                            merged_path.push_back(p);
+                            cost += cost_grid[p.x][p.y];
+                        }
+                    }
+                }
+                
+                // Add destination path
+                for (const auto& p : pathE) {
+                    if (path_set.find(p) == path_set.end()) {
+                        path_set.insert(p);
+                        merged_path.push_back(p);
+                        cost += cost_grid[p.x][p.y];
+                    }
+                }
+                
+                results[i].full_path = merged_path;
+                results[i].valid = !merged_path.empty();
+                results[i].total_cost = cost;
+            }
+        }
+        
+        // Handle any remaining pairs with Dijkstra
         for (int i = 0; i < num_points - 1; i++) {
             if (!results[i].valid) {
                 Point source = {positions[i].first, positions[i].second};
@@ -779,19 +973,19 @@ public:
     }
     
 private:
-    vector<Point> createLShapedPath(Point start, Point end, const vector<vector<int>>& grid) {
+    vector<Point> createLShapedPathTransformed(Point start, Point end, const vector<vector<int>>& transformed_grid) {
         vector<Point> path;
         
         start = start.clamped(grid_size);
         end = end.clamped(grid_size);
         
-        if (grid[start.x][start.y] >= INF || grid[end.x][end.y] >= INF) {
+        if (transformed_grid[start.x][start.y] >= INF || transformed_grid[end.x][end.y] >= INF) {
             return {};
         }
         
         // Try horizontal then vertical
-        vector<Point> path1 = tryHorizontalThenVertical(start, end, grid);
-        vector<Point> path2 = tryVerticalThenHorizontal(start, end, grid);
+        vector<Point> path1 = tryHorizontalThenVerticalTransformed(start, end, transformed_grid);
+        vector<Point> path2 = tryVerticalThenHorizontalTransformed(start, end, transformed_grid);
         
         if (!path1.empty() && !path2.empty()) {
             return (path1.size() <= path2.size()) ? path1 : path2;
@@ -804,7 +998,7 @@ private:
         return {};
     }
     
-    vector<Point> tryHorizontalThenVertical(Point start, Point end, const vector<vector<int>>& grid) {
+    vector<Point> tryHorizontalThenVerticalTransformed(Point start, Point end, const vector<vector<int>>& transformed_grid) {
         vector<Point> path;
         path.push_back(start);
         
@@ -814,7 +1008,7 @@ private:
         // Move horizontally
         while (current_x != end.x) {
             int next_x = (current_x < end.x) ? current_x + 1 : current_x - 1;
-            if (grid[next_x][current_y] >= INF) return {};
+            if (transformed_grid[next_x][current_y] >= INF) return {};
             current_x = next_x;
             path.push_back(Point(current_x, current_y));
         }
@@ -822,7 +1016,7 @@ private:
         // Move vertically
         while (current_y != end.y) {
             int next_y = (current_y < end.y) ? current_y + 1 : current_y - 1;
-            if (grid[current_x][next_y] >= INF) return {};
+            if (transformed_grid[current_x][next_y] >= INF) return {};
             current_y = next_y;
             path.push_back(Point(current_x, current_y));
         }
@@ -830,7 +1024,7 @@ private:
         return path;
     }
     
-    vector<Point> tryVerticalThenHorizontal(Point start, Point end, const vector<vector<int>>& grid) {
+    vector<Point> tryVerticalThenHorizontalTransformed(Point start, Point end, const vector<vector<int>>& transformed_grid) {
         vector<Point> path;
         path.push_back(start);
         
@@ -840,7 +1034,7 @@ private:
         // Move vertically
         while (current_y != end.y) {
             int next_y = (current_y < end.y) ? current_y + 1 : current_y - 1;
-            if (grid[current_x][next_y] >= INF) return {};
+            if (transformed_grid[current_x][next_y] >= INF) return {};
             current_y = next_y;
             path.push_back(Point(current_x, current_y));
         }
@@ -848,7 +1042,7 @@ private:
         // Move horizontally
         while (current_x != end.x) {
             int next_x = (current_x < end.x) ? current_x + 1 : current_x - 1;
-            if (grid[next_x][current_y] >= INF) return {};
+            if (transformed_grid[next_x][current_y] >= INF) return {};
             current_x = next_x;
             path.push_back(Point(current_x, current_y));
         }
@@ -861,7 +1055,9 @@ private:
         
         int cost = 0;
         for (const auto& p : path) {
-            if (grid[p.x][p.y] >= INF) return INF;
+            if (p.x < 0 || p.x >= grid_size || p.y < 0 || p.y >= grid_size || grid[p.x][p.y] >= INF) {
+                return INF;
+            }
             cost += grid[p.x][p.y];
         }
         return cost;
