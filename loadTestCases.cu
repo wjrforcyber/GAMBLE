@@ -729,18 +729,12 @@ public:
                     trans_info.normalized_source.x + j,
                     trans_info.normalized_source.y + (n - 1 - j) // Second diagonal
                 };
-                Point d2_normalized = {
-                    trans_info.normalized_source.x + (n - 1 - j),
-                    trans_info.normalized_source.y + j // First diagonal
-                };
                 
                 // Transform back to original coordinates
                 Point d1_original = transformBack(d1_normalized, trans_info, grid_size);
-                Point d2_original = transformBack(d2_normalized, trans_info, grid_size);
                 
                 // Clamp to grid
                 d1_original = d1_original.clamped(grid_size);
-                d2_original = d2_original.clamped(grid_size);
                 
                 // Add first diagonal point
                 sources_x.push_back(source.x);
@@ -749,16 +743,6 @@ public:
                 dests_y.push_back(sink.y);
                 diag_points_x.push_back(d1_original.x);
                 diag_points_y.push_back(d1_original.y);
-                pair_indices.push_back(i);
-                trans_infos.push_back(trans_info);
-                
-                // Add second diagonal point
-                sources_x.push_back(source.x);
-                sources_y.push_back(source.y);
-                dests_x.push_back(sink.x);
-                dests_y.push_back(sink.y);
-                diag_points_x.push_back(d2_original.x);
-                diag_points_y.push_back(d2_original.y);
                 pair_indices.push_back(i);
                 trans_infos.push_back(trans_info);
             }
